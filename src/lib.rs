@@ -1,23 +1,8 @@
 use pgrx::prelude::*;
 
-pgrx::pg_module_magic!();
+pg_module_magic!();
 
-#[pg_extern]
-fn hello_plprql() -> &'static str {
-    "Hello, plprql"
-}
-
-#[cfg(any(test, feature = "pg_test"))]
-#[pg_schema]
-mod tests {
-    use pgrx::prelude::*;
-
-    #[pg_test]
-    fn test_hello_plprql() {
-        assert_eq!("Hello, plprql", crate::hello_plprql());
-    }
-
-}
+mod plprql;
 
 /// This module is required by `cargo pgrx test` invocations.
 /// It must be visible at the root of your extension crate.
