@@ -1,0 +1,5 @@
+comment = 'plprql:  Created by Kasper Korsholm Marstal'
+default_version = '@CARGO_VERSION@'
+module_pathname = '$libdir/plprql'
+relocatable = false
+superuser = true
