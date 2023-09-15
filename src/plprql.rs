@@ -1,12 +1,31 @@
-use pgrx::Uuid;
-use pgrx::pg_sys;
 use pgrx::prelude::*;
 use prql_compiler::{compile, Options, Target, sql::Dialect};
 
-#[pg_extern]
-fn hello_plprql() -> &'static str {
-    "Hello, plprql"
+#[pg_extern(sql = "
+    create function plprql_call_handler() returns language_handler
+        language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
+")]
+unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    match handle(function_call_info) {
+        Ok(datum) => datum,
+        Err(err) => panic!("{:?}", err)
+    }
 }
+
+#[pg_extern]
+unsafe fn plprql_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
+    // https://github.com/tcdi/plrust/blob/29b7643ee3f2c5534b25d667fee824619a6fc9f6/plrust/src/plrust.rs
+}
+
+extension_sql!(r#"
+    create language plprql
+        handler plprql_call_handler
+        validator plprql_validator;
+
+    comment on language plprql is 'PRQL procedural language';"#,
+    name = "language_handler",
+    requires = [plprql_call_handler, plprql_validator]
+);
 
 #[pg_extern]
 fn prql(to_sql: &str) -> String {
@@ -23,34 +42,40 @@ fn prql(to_sql: &str) -> String {
     }
 }
 
-#[pg_extern(sql = "
-    create function plprql_call_handler() returns language_handler
-        language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
-")]
-unsafe fn plprql_call_handler(f: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    match handle(f) {
-        Ok(datum) => datum,
-        Err(err) => panic!("{:?}", err)
+fn handle(function_call_info: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, String> {
+    // Gets fn_oid (https://github.com/tcdi/plrust/blob/0e2b66a0f529513c86258e9a4deb7f9f2fb1800a/plrust/src/lib.rs#L180C1-L188C17)
+    let function_oid = unsafe {
+        function_call_info
+            .as_ref()
+            .ok_or("PlRustError::NullFunctionCallInfo")?
+            .flinfo
+            .as_ref()
     }
-}
+        .ok_or("PlRustError::NullFmgrInfo")?
+        .fn_oid;
 
-#[pg_extern]
-unsafe fn plprql_validator(_fid: pg_sys::Oid, _f: pg_sys::FunctionCallInfo) {
-    // https://github.com/tcdi/plrust/blob/29b7643ee3f2c5534b25d667fee824619a6fc9f6/plrust/src/plrust.rs
-}
+    // Lookup function
+    Spi::connect(|client| {
+        let _function_source = match client.select(format!(
+            "select pg_proc.prosrc from pg_catalog.pg_proc where pg_proc.oid = {}", function_oid).as_str(),
+                                                   None,
+                                                   None)
+            .unwrap()
+            .first()
+            .get_by_name::<&str, _>("prosrc")
+        {
+            Ok(prosrc) => prosrc.unwrap(),
+            Err(_) => panic!()
+        };
+    });
 
-extension_sql!(r#"
-    create language plprql
-        handler plprql_call_handler
-        validator plprql_validator;
-
-    comment on language plprql is 'PRQL procedural language';"#,
-    name = "language_handler",
-    requires = [plprql_call_handler, plprql_validator]
-);
-
-fn handle(_f: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, String> {
-    Ok(Uuid::from_slice(b"OKOKOKOKOKOKOKOK").into_datum().unwrap())
+    // Satisfy return type for now
+     Spi::connect(|spi| {
+        match spi.select("SELECT 'Bob'", None, None) {
+            Ok(_tup) => Ok("1".into_datum().unwrap()),
+            Err(err) => Err(err.to_string())
+        }
+    })
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -59,21 +84,16 @@ mod tests {
     use pgrx::prelude::*;
 
     #[pg_test]
-    fn test_hello_plprql() {
-        assert_eq!("Hello, plprql", crate::plprql::hello_plprql());
-    }
-
-    #[pg_test]
     fn test_prql() {
         assert_eq!("SELECT name, age FROM employees", crate::plprql::prql("from employees | select {name, age}"))
     }
 
     #[pg_test]
     fn test_smoke() {
-        Spi::connect(|mut c| {
+        Spi::connect(|mut client| {
             // TODO: Seed elsewhere
             // https://github.com/alexisrolland/star-wars-data/blob/d72f819e8309c1c508be23c879204277977c61f1/database.sql
-            c.update(r#"
+            client.update(r#"
                 CREATE SCHEMA base;
 
                 CREATE TABLE base.planet(
@@ -260,8 +280,8 @@ mod tests {
                 ('BB8',null,null,'none','none','black',null,'none',28,'2015-04-17 06:57:38.061346Z','2015-04-17 06:57:38.061453Z','https://swapi.co/api/people/87/',87),
                 ('Captain Phasma',null,null,null,null,null,null,'female',28,'2015-10-13 10:35:39.229823Z','2015-10-13 10:35:39.229894Z','https://swapi.co/api/people/88/',88),
                 ('Padmé Amidala','165','45','brown','light','brown','46BBY','female',8,'2014-12-19 17:28:26.926000Z','2016-04-20 17:06:31.502555Z','https://swapi.co/api/people/35/',35);"#,
-                     None,
-                     None)
+                          None,
+                          None)
                 .unwrap();
 
             let skywalkers= vec![
@@ -271,7 +291,7 @@ mod tests {
             ];
 
             // SQL statement (1)
-            let sql_skywalkers = c
+            let sql_skywalkers = client
                 .select(r#"
                     SELECT a.name as character, b.name as PLANET
                     FROM base.people a
@@ -291,7 +311,7 @@ mod tests {
             assert_eq!(skywalkers, sql_skywalkers);
 
             // PRQL statement (1), should select the same data as SQL statement (1)
-            let prql_skywalkers = c
+            let prql_skywalkers = client
                 .select(crate::plprql::prql(r#"
                     from base.people
                     join base.planet (this.planet_id == that.id)
@@ -311,17 +331,60 @@ mod tests {
 
             assert_eq!(sql_skywalkers, prql_skywalkers);
 
-            let result = c.update(r#"
+            let result = client.update(r#"
                 create function plprql_dummy(a1 numeric, a2 text, a3 integer[])
                     returns uuid
                     as $$
-                      Example of source with text result.
+                      Example of source with uuid result.
                     $$ language plprql;
                 select plprql_dummy(1.23, 'abc', '{4, 5, 6}');"#,
-                     None,
-                     None).unwrap().is_empty();
+                                       None,
+                                       None).unwrap().is_empty();
 
             assert_eq!(false, result);
+        });
+    }
+
+    #[pg_test]
+    fn test_function_definition_lookup() {
+        Spi::connect(|mut client| {
+            client.update(r#"
+                create function plprql_function_definition(a1 numeric, a2 text, a3 integer[])
+                    returns text
+                    as $$
+                      Example of source with text result.
+                    $$ language plprql;
+                "#,
+                                       None,
+                                       None).unwrap();
+
+            // We usually get fn_oid from pg_sys::FunctionCallInfo, but here we have to look it up manually
+            let fn_oid = match client.select(format!(
+                "select pg_proc.oid from pg_catalog.pg_proc where pg_proc.proname = 'plprql_function_definition'").as_str(),
+                                                    None,
+                                                    None)
+                .unwrap()
+                .first()
+                .get_by_name::<u32, _>("oid")
+                {
+                Ok(fn_oid) => fn_oid.unwrap(),
+                Err(_) => panic!()
+            };
+
+            let prosrc = match client.select(format!(
+                "select pg_proc.prosrc from pg_catalog.pg_proc where pg_proc.proname = 'plprql_function_definition'").as_str(),
+                                             None,
+                                             None)
+                .unwrap()
+                .first()
+                .get_by_name::<&str, _>("prosrc")
+            {
+                Ok(prosrc) => prosrc.unwrap(),
+                Err(_) => panic!()
+            };
+
+            println!("{}", fn_oid);
+            println!("{}", prosrc);
         });
     }
 }
