@@ -1,3 +1,5 @@
+use pgrx::Uuid;
+use pgrx::pg_sys;
 use pgrx::prelude::*;
 use prql_compiler::{compile, Options, Target, sql::Dialect};
 
@@ -15,7 +17,40 @@ fn prql(to_sql: &str) -> String {
         color: false,
     };
 
-    compile(&to_sql, opts).unwrap()
+    match compile(&to_sql, opts) {
+        Ok(sql) => sql,
+        Err(err) => panic!("{:?}", err)
+    }
+}
+
+#[pg_extern(sql = "
+    create function plprql_call_handler() returns language_handler
+        language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
+")]
+unsafe fn plprql_call_handler(f: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    match handle(f) {
+        Ok(datum) => datum,
+        Err(err) => panic!("{:?}", err)
+    }
+}
+
+#[pg_extern]
+unsafe fn plprql_validator(_fid: pg_sys::Oid, _f: pg_sys::FunctionCallInfo) {
+    // https://github.com/tcdi/plrust/blob/29b7643ee3f2c5534b25d667fee824619a6fc9f6/plrust/src/plrust.rs
+}
+
+extension_sql!(r#"
+    create language plprql
+        handler plprql_call_handler
+        validator plprql_validator;
+
+    comment on language plprql is 'PRQL procedural language';"#,
+    name = "language_handler",
+    requires = [plprql_call_handler, plprql_validator]
+);
+
+fn handle(_f: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, String> {
+    Ok(Uuid::from_slice(b"OKOKOKOKOKOKOKOK").into_datum().unwrap())
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -36,6 +71,7 @@ mod tests {
     #[pg_test]
     fn test_smoke() {
         Spi::connect(|mut c| {
+            // TODO: Seed elsewhere
             // https://github.com/alexisrolland/star-wars-data/blob/d72f819e8309c1c508be23c879204277977c61f1/database.sql
             c.update(r#"
                 CREATE SCHEMA base;
@@ -254,16 +290,15 @@ mod tests {
 
             assert_eq!(skywalkers, sql_skywalkers);
 
-            // PRQL statement (1)
-            // Should select the same data as SQL statement (1)
+            // PRQL statement (1), should select the same data as SQL statement (1)
             let prql_skywalkers = c
                 .select(crate::plprql::prql(r#"
-                    from c = base.people
-                    join p = base.planet (c.planet_id == p.id)
-                    select {character = c.name, planet = p.name}
+                    from base.people
+                    join base.planet (this.planet_id == that.id)
+                    select {character = people.name, planet = planet.name}
                     filter (character ~= 'Skywalker')
-                    sort character
-                "#).as_str(),
+                    sort character"#)
+                .as_str(),
                         None,
                         None)
                 .unwrap()
@@ -274,7 +309,19 @@ mod tests {
                 })
                 .collect::<Vec<_>>();
 
-            assert_eq!(sql_skywalkers, prql_skywalkers)
-        })
+            assert_eq!(sql_skywalkers, prql_skywalkers);
+
+            let result = c.update(r#"
+                create function plprql_dummy(a1 numeric, a2 text, a3 integer[])
+                    returns uuid
+                    as $$
+                      Example of source with text result.
+                    $$ language plprql;
+                select plprql_dummy(1.23, 'abc', '{4, 5, 6}');"#,
+                     None,
+                     None).unwrap().is_empty();
+
+            assert_eq!(false, result);
+        });
     }
 }
