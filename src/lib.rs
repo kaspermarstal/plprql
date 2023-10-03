@@ -2,6 +2,8 @@ use pgrx::prelude::*;
 
 pg_module_magic!();
 
+mod err;
+mod fun;
 mod plprql;
 
 /// This module is required by `cargo pgrx test` invocations.

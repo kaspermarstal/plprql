@@ -1,6 +1,6 @@
 [package]
 name = "plprql"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 
 [lib]
@@ -16,14 +16,18 @@ pg15 = ["pgrx/pg15", "pgrx-tests/pg15"]
 pg_test = []
 
 [dependencies]
-pgrx = "=0.9.7"
+pgrx = { git = "https://github.com/pgcentralfoundation/pgrx.git", branch = "develop" }  # Most recent is "=0.10.2", but need pg_proc which is not yet released
 prql-compiler = { version = "0.9.2", features = ["postgres"] }
+prql-compiler-macros = { version = "0.9.2" }
+thiserror = "1.0.48"
+sqlparser = {version = "0.38.0", features = ["visitor"] }
 
 [dev-dependencies]
-pgrx-tests = "=0.9.7"
+pgrx-tests = { git = "https://github.com/pgcentralfoundation/pgrx.git", branch = "develop" }  # "=0.10.2"
 
 [profile.dev]
 panic = "unwind"
+debug = true
 
 [profile.release]
 panic = "unwind"
