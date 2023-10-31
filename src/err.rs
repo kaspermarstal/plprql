@@ -1,7 +1,4 @@
-use pgrx::pg_sys::panic::ErrorReport;
-use pgrx::prelude::PgSqlErrorCode;
-use pgrx::spi::Error as SpiError;
-use prql_compiler::ErrorMessages;
+use pgrx::{pg_sys::panic::ErrorReport, PgSqlErrorCode};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -15,17 +12,17 @@ pub enum PlprqlError {
     #[error("FmgrInfo is null")]
     NullFmgrInfo,
 
-    #[error(transparent)] // delegate Display to PGRX error
-    PgrxError(#[from] SpiError),
+    #[error(transparent)] // delegate Display to PGRX
+    PgrxError(#[from] pgrx::spi::Error),
 
-    #[error(transparent)] // delegate Display to PRQL error
-    PrqlError(#[from] ErrorMessages),
+    #[error(transparent)] // delegate Display to PRQL
+    PrqlError(#[from] prql_compiler::ErrorMessages),
 
-    #[error("Expected single return value, got table")]
-    ReturnTableNotSupported,
-
-    #[error("Expected single return value, got setof")]
+    #[error("Return SetOf not implemented")]
     ReturnSetOfNotSupported,
+
+    #[error("Return scalar not implemented")]
+    ReturnScalarNotSupported,
 }
 
 impl From<PlprqlError> for ErrorReport {
