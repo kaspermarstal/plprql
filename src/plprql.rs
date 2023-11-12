@@ -1,63 +1,11 @@
-use crate::err::PlprqlError;
+use crate::call::{return_scalar, return_setof_iterator, return_table_iterator};
+use crate::err::PlprqlResult;
 use crate::fun::{Function, Return};
 use pgrx::prelude::*;
-use prql_compiler::{compile, sql::Dialect, Options, Target};
-
-extension_sql!(
-    "create language plprql
-    handler plprql_call_handler
-    validator plprql_validator;
-    comment on language plprql is 'PRQL procedural language';",
-    name = "language_handler",
-    requires = [plprql_call_handler, plprql_validator]
-);
-
-#[pg_extern(sql = "
-    create function plprql_call_handler() returns language_handler
-    language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
-")]
-fn plprql_call_handler(
-    function_call_info: pg_sys::FunctionCallInfo,
-) -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(name, Result<Option<String>, pgrx::spi::Error>),
-            name!(height, Result<Option<i32>, pgrx::spi::Error>),
-        ),
-    >,
-    PlprqlError,
-> {
-    // Lookup function in Postgres catalog
-    let function = Function::from_call_info(function_call_info)?;
-
-    let sql = prql_to_sql(function.body().as_str())?;
-
-    // Run the SQL queryand collect the results
-    let heap_tuples = Spi::connect(|client| {
-        let heap_tuples = client
-            .select(sql.as_str(), None, function.arguments()?)?
-            .map(|heap_tuple| (heap_tuple["name"].value(), heap_tuple["height"].value()))
-            .collect::<Vec<_>>();
-
-        Ok::<_, PlprqlError>(heap_tuples)
-    })?;
-
-    // TODO: Assert that the PRQL return type matches the function definition
-    match function.return_type() {
-        Return::Table => Ok(TableIterator::new(heap_tuples.into_iter())),
-        Return::SetOf => Err(PlprqlError::ReturnSetOfNotSupported),
-        Return::Scalar => Err(PlprqlError::ReturnScalarNotSupported),
-    }
-}
+use prql_compiler::{compile, sql::Dialect, ErrorMessages, Options, Target};
 
 #[pg_extern]
-unsafe fn plprql_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
-    // TODO
-}
-
-#[pg_extern]
-fn prql_to_sql(prql: &str) -> Result<String, prql_compiler::ErrorMessages> {
+pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
     let opts = &Options {
         format: false,
         target: Target::Sql(Some(Dialect::Postgres)),
@@ -67,6 +15,42 @@ fn prql_to_sql(prql: &str) -> Result<String, prql_compiler::ErrorMessages> {
 
     compile(&prql, opts)
 }
+
+#[pg_extern(sql = "
+    create function plprql_call_handler() returns language_handler
+    language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
+")]
+unsafe fn plprql_call_handler(
+    function_call_info: pg_sys::FunctionCallInfo,
+) -> PlprqlResult<pg_sys::Datum> {
+    let function = Function::from_call_info(function_call_info)?;
+
+    match function.return_type() {
+        Return::Table => Ok(TableIterator::srf_next(
+            function_call_info,
+            return_table_iterator(&function),
+        )),
+        Return::SetOf => Ok(SetOfIterator::srf_next(
+            function_call_info,
+            return_setof_iterator(&function),
+        )),
+        Return::Scalar => Ok(return_scalar(&function)),
+    }
+}
+
+#[pg_extern]
+unsafe fn plprql_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
+    // TODO
+}
+
+extension_sql!(
+    "create language plprql
+    handler plprql_call_handler
+    validator plprql_validator;
+    comment on language plprql is 'PRQL procedural language';",
+    name = "language_handler",
+    requires = [plprql_call_handler, plprql_validator]
+);
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
@@ -99,30 +83,55 @@ mod tests {
                 .update(include_str!("starwars.sql"), None, None)
                 .unwrap();
 
-            _ = client
-                .update(
-                    r#"
-                    create function get_name_and_height(int) returns table(name text, height integer) as $$
+            _ = client.update(
+                r#"
+                    create function get_height(int) returns table(id integer, height integer) as $$
                         from base.people
                         filter id == $1
-                        select {name, height}
+                        select {id, height}
                     $$ language plprql;
                     "#,
-                    None,
-                    None,
-                );
+                None,
+                None,
+            );
 
             let should_be_luke_skywalker = client
-                .select("select * from get_name_and_height(1)", None, None)
+                .select("select * from get_height(1)", None, None)
                 .unwrap()
                 .first()
-                .get_two::<&str, i32>()
+                .get_two::<i32, i32>()
                 .unwrap();
 
-            assert_eq!(
-                should_be_luke_skywalker,
-                (Some("Luke Skywalker"), Some(172))
+            assert_eq!(should_be_luke_skywalker, (Some(1), Some(172)));
+        });
+    }
+
+    #[pg_test]
+    fn test_return_setof() {
+        Spi::connect(|mut client| {
+            _ = client
+                .update(include_str!("starwars.sql"), None, None)
+                .unwrap();
+
+            _ = client.update(
+                r#"
+                    create function filter_height(int) returns setof integer as $$
+                        from base.people
+                        filter height > $1
+                        select {height}
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
             );
+
+            let filtered_heights = client
+                .select("select filter_height(100)", None, None)
+                .unwrap()
+                .map(|r| r.get_datum_by_ordinal(1).unwrap().value::<i32>().unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(filtered_heights.len(), 74);
         });
     }
 

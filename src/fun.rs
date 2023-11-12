@@ -34,7 +34,7 @@ impl Function {
         })
     }
 
-    pub fn arguments(&self) -> PlprqlResult<Vec<(PgOid, Option<pg_sys::Datum>)>> {
+    pub fn arguments(&self) -> PlprqlResult<Option<Vec<(PgOid, Option<pg_sys::Datum>)>>> {
         let argument_types = self
             .pg_proc
             .proargtypes()

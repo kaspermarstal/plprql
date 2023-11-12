@@ -2,8 +2,10 @@ use pgrx::prelude::*;
 
 pg_module_magic!();
 
+mod call;
 mod err;
 mod fun;
+mod row;
 mod plprql;
 
 /// This module is required by `cargo pgrx test` invocations.

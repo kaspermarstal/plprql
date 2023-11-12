@@ -31,4 +31,4 @@ impl From<PlprqlError> for ErrorReport {
     }
 }
 
-pub(crate) type PlprqlResult<T> = Result<Option<T>, PlprqlError>;
+pub(crate) type PlprqlResult<T> = Result<T, PlprqlError>;
