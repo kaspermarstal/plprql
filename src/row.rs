@@ -1,7 +1,7 @@
-use pgrx::{pg_sys, IntoHeapTuple};
+use pgrx::{pg_sys, AnyElement, IntoHeapTuple};
 
 pub struct Row {
-    pub columns: Vec<Option<pg_sys::Datum>>,
+    pub columns: Vec<Option<AnyElement>>,
 }
 
 impl IntoHeapTuple for Row {
@@ -9,22 +9,28 @@ impl IntoHeapTuple for Row {
         self,
         tupdesc: *mut pg_sys::TupleDescData,
     ) -> *mut pg_sys::HeapTupleData {
-        let mut datums = Vec::new();
-        let mut isnulls = Vec::new();
+        let mut datums = Vec::with_capacity(self.columns.len());
+        let mut is_nulls = Vec::with_capacity(self.columns.len());
 
-        for value in self.columns.into_iter() {
-            match value {
-                Some(datum) => {
-                    datums.push(datum);
-                    isnulls.push(false);
+        for (ordinal, any_element) in self.columns.iter().enumerate() {
+            match any_element {
+                Some(any_element) => {
+                    assert_eq!(
+                        // Ordinals are 1-indexed
+                        pg_sys::SPI_gettypeid(tupdesc, (ordinal + 1) as i32),
+                        any_element.oid()
+                    );
+
+                    datums.push(any_element.datum());
+                    is_nulls.push(false);
                 }
                 None => {
                     datums.push(pg_sys::Datum::from(0));
-                    isnulls.push(true);
+                    is_nulls.push(true);
                 }
             };
         }
 
-        unsafe { pg_sys::heap_form_tuple(tupdesc, datums.as_mut_ptr(), isnulls.as_mut_ptr()) }
+        unsafe { pg_sys::heap_form_tuple(tupdesc, datums.as_mut_ptr(), is_nulls.as_mut_ptr()) }
     }
 }

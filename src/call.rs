@@ -3,8 +3,9 @@ use crate::plprql::prql_to_sql;
 use crate::row::Row;
 use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
+use pgrx::AnyElement;
 
-pub(crate) fn return_table_iterator(
+pub(crate) fn call_and_return_table_iterator(
     function: &Function,
 ) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
     || -> Option<TableIterator<'static, Row>> {
@@ -12,7 +13,7 @@ pub(crate) fn return_table_iterator(
         let arguments = function.arguments().unwrap();
 
         Spi::connect(|client| {
-            let heap_tuples = client
+            let rows = client
                 .select(&sql, None, arguments)
                 .report()
                 .map(|heap_tuple| Row {
@@ -22,27 +23,23 @@ pub(crate) fn return_table_iterator(
                                 // Ordinals are 1-indexed
                                 .get_datum_by_ordinal(i + 1)
                                 .report()
-                                // TODO: Raw Datum is private. The only way to access it is via value()
-                                //  which converts the Datum to a rust type. We need to find a way around
-                                //   this. The choice of i32 here is arbitrary.
-                                .value::<i32>()
+                                .value::<AnyElement>()
                                 .report()
-                                .into_datum()
                         })
-                        .collect(),
+                        .collect::<Vec<_>>(),
                 })
                 .collect::<Vec<_>>();
 
-            if heap_tuples.is_empty() {
+            if rows.is_empty() {
                 return None;
             }
 
-            Some(TableIterator::new(heap_tuples.into_iter()))
+            Some(TableIterator::new(rows))
         })
     }
 }
 
-pub(crate) fn return_setof_iterator(
+pub(crate) fn call_and_return_setof_iterator(
     function: &Function,
 ) -> impl FnOnce() -> Option<SetOfIterator<'static, Option<pg_sys::Datum>>> + '_ {
     || -> Option<SetOfIterator<'static, Option<pg_sys::Datum>>> {
@@ -58,25 +55,22 @@ pub(crate) fn return_setof_iterator(
                         // Ordinals are 1-indexed
                         .get_datum_by_ordinal(1)
                         .report()
-                        // TODO: Raw Datum is private. The only way to access it is via value()
-                        //  which converts the Datum to a rust type. We need to find a way around
-                        //   this. The choice of i32 here is arbitrary.
-                        .value::<i32>()
+                        .value::<AnyElement>()
                         .report()
                         .into_datum()
                 })
-                .collect::<Vec<_>>();
+                .collect::<Vec<Option<pg_sys::Datum>>>();
 
             if column.is_empty() {
                 return None;
             }
 
-            Some(SetOfIterator::new(column.into_iter()))
+            Some(SetOfIterator::new(column))
         })
     }
 }
 
-pub(crate) fn return_scalar(function: &Function) -> pg_sys::Datum {
+pub(crate) fn call_and_return_scalar(function: &Function) -> pg_sys::Datum {
     let sql = prql_to_sql(&function.body()).unwrap();
     let arguments = function.arguments().unwrap();
 
@@ -84,10 +78,15 @@ pub(crate) fn return_scalar(function: &Function) -> pg_sys::Datum {
         client
             .select(&sql, None, arguments)
             .report()
-            .get_one::<i32>()
-            .into_datum() // Calls report() internally
+            .first()
+            .get_one::<AnyElement>()
+            .report()
     }) {
-        Some(datum) => datum,
+        Some(elem) => {
+            assert_eq!(function.pg_proc.prorettype(), elem.oid());
+
+            elem.datum()
+        }
         None => pg_sys::Datum::from(0),
     }
 }

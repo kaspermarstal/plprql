@@ -1,4 +1,6 @@
-use crate::call::{return_scalar, return_setof_iterator, return_table_iterator};
+use crate::call::{
+    call_and_return_scalar, call_and_return_setof_iterator, call_and_return_table_iterator,
+};
 use crate::err::PlprqlResult;
 use crate::fun::{Function, Return};
 use pgrx::prelude::*;
@@ -28,13 +30,13 @@ unsafe fn plprql_call_handler(
     match function.return_type() {
         Return::Table => Ok(TableIterator::srf_next(
             function_call_info,
-            return_table_iterator(&function),
+            call_and_return_table_iterator(&function),
         )),
         Return::SetOf => Ok(SetOfIterator::srf_next(
             function_call_info,
-            return_setof_iterator(&function),
+            call_and_return_setof_iterator(&function),
         )),
-        Return::Scalar => Ok(return_scalar(&function)),
+        Return::Scalar => Ok(call_and_return_scalar(&function)),
     }
 }
 
@@ -85,25 +87,24 @@ mod tests {
 
             _ = client.update(
                 r#"
-                    create function get_height(int) returns table(id integer, height integer) as $$
+                    create function get_name_and_height(int) returns table(name text, height int) as $$
                         from base.people
                         filter id == $1
-                        select {id, height}
+                        select {name, height}
                     $$ language plprql;
                     "#,
                 None,
                 None,
             );
-
-            let should_be_luke_skywalker = client
-                .select("select * from get_height(1)", None, None)
-                .unwrap()
-                .first()
-                .get_two::<i32, i32>()
-                .unwrap();
-
-            assert_eq!(should_be_luke_skywalker, (Some(1), Some(172)));
         });
+
+        let should_be_general_grievous: (Option<&str>, Option<i32>) = Spi::get_two_with_args(
+            "select * from get_name_and_height($1)",
+            vec![(PgBuiltInOids::INT4OID.oid(), 79.into_datum())],
+        )
+        .unwrap();
+
+        assert_eq!(should_be_general_grievous, (Some("Grevious"), Some(216)));
     }
 
     #[pg_test]
@@ -128,11 +129,60 @@ mod tests {
             let filtered_heights = client
                 .select("select filter_height(100)", None, None)
                 .unwrap()
-                .map(|r| r.get_datum_by_ordinal(1).unwrap().value::<i32>().unwrap())
+                .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<i32>().unwrap())
                 .collect::<Vec<_>>();
 
             assert_eq!(filtered_heights.len(), 74);
+
+            _ = client.update(
+                r#"
+                    create function get_names() returns setof text as $$
+                        from base.people
+                        select {name}
+                        sort name
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+
+            let names = client
+                .select("select get_names()", None, None)
+                .unwrap()
+                .map(|row| {
+                    row.get_datum_by_ordinal(1)
+                        .unwrap()
+                        .value::<&str>()
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+
+            assert_eq!(names, vec!(Some("a"), Some("b")));
         });
+    }
+
+    #[pg_test]
+    fn test_return_scalar() {
+        Spi::connect(|mut client| {
+            _ = client
+                .update(include_str!("starwars.sql"), None, None)
+                .unwrap();
+
+            _ = client.update(
+                r#"
+                    create function get_max_height() returns int as $$
+                        from base.people
+                        aggregate { max height }
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+        });
+
+        let should_be_yarael_poof: Option<i32> = Spi::get_one("select get_max_height()").unwrap();
+
+        assert_eq!(should_be_yarael_poof, Some(264));
     }
 
     #[pg_test]
