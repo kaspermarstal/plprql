@@ -17,12 +17,6 @@ pub enum PlprqlError {
 
     #[error(transparent)] // delegate Display to PRQL
     PrqlError(#[from] prql_compiler::ErrorMessages),
-
-    #[error("Return SetOf not implemented")]
-    ReturnSetOfNotSupported,
-
-    #[error("Return scalar not implemented")]
-    ReturnScalarNotSupported,
 }
 
 impl From<PlprqlError> for ErrorReport {

@@ -1,13 +1,11 @@
+use crate::anydatum::AnyDatum;
 use crate::fun::Function;
 use crate::plprql::prql_to_sql;
 use crate::row::Row;
 use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
-use pgrx::AnyElement;
 
-pub(crate) fn call_and_return_table_iterator(
-    function: &Function,
-) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
+pub(crate) fn return_table_iterator(function: &Function) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
     || -> Option<TableIterator<'static, Row>> {
         let sql = prql_to_sql(&function.body()).unwrap();
         let arguments = function.arguments().unwrap();
@@ -17,18 +15,19 @@ pub(crate) fn call_and_return_table_iterator(
                 .select(&sql, None, arguments)
                 .report()
                 .map(|heap_tuple| Row {
-                    columns: (0..heap_tuple.columns())
+                    datums: (0..heap_tuple.columns())
                         .map(|i| {
                             heap_tuple
                                 // Ordinals are 1-indexed
                                 .get_datum_by_ordinal(i + 1)
                                 .report()
-                                .value::<AnyElement>()
+                                .value::<AnyDatum>()
                                 .report()
+                                .unwrap()
                         })
-                        .collect::<Vec<_>>(),
+                        .collect::<Vec<AnyDatum>>(),
                 })
-                .collect::<Vec<_>>();
+                .collect::<Vec<Row>>();
 
             if rows.is_empty() {
                 return None;
@@ -39,10 +38,10 @@ pub(crate) fn call_and_return_table_iterator(
     }
 }
 
-pub(crate) fn call_and_return_setof_iterator(
+pub(crate) fn return_setof_iterator(
     function: &Function,
-) -> impl FnOnce() -> Option<SetOfIterator<'static, Option<pg_sys::Datum>>> + '_ {
-    || -> Option<SetOfIterator<'static, Option<pg_sys::Datum>>> {
+) -> impl FnOnce() -> Option<SetOfIterator<'static, AnyDatum>> + '_ {
+    || -> Option<SetOfIterator<'static, AnyDatum>> {
         let sql = prql_to_sql(&function.body()).unwrap();
         let arguments = function.arguments().unwrap();
 
@@ -55,38 +54,33 @@ pub(crate) fn call_and_return_setof_iterator(
                         // Ordinals are 1-indexed
                         .get_datum_by_ordinal(1)
                         .report()
-                        .value::<AnyElement>()
+                        .value::<AnyDatum>()
                         .report()
-                        .into_datum()
+                        .unwrap()
                 })
-                .collect::<Vec<Option<pg_sys::Datum>>>();
+                .collect::<Vec<AnyDatum>>();
 
             if column.is_empty() {
                 return None;
             }
 
-            Some(SetOfIterator::new(column))
+            Some(SetOfIterator::new(column.into_iter()))
         })
     }
 }
 
-pub(crate) fn call_and_return_scalar(function: &Function) -> pg_sys::Datum {
+pub(crate) fn return_scalar(function: &Function) -> pg_sys::Datum {
     let sql = prql_to_sql(&function.body()).unwrap();
     let arguments = function.arguments().unwrap();
 
-    match Spi::connect(|client| {
+    Spi::connect(|client| {
         client
             .select(&sql, None, arguments)
             .report()
             .first()
-            .get_one::<AnyElement>()
+            .get_one::<AnyDatum>()
             .report()
-    }) {
-        Some(elem) => {
-            assert_eq!(function.pg_proc.prorettype(), elem.oid());
-
-            elem.datum()
-        }
-        None => pg_sys::Datum::from(0),
-    }
+            .into_datum()
+    })
+    .unwrap_or_else(|| pg_sys::Datum::from(0))
 }

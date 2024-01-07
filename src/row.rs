@@ -1,27 +1,19 @@
-use pgrx::{pg_sys, AnyElement, IntoHeapTuple};
+use crate::anydatum::AnyDatum;
+use pgrx::{pg_sys, IntoDatum, IntoHeapTuple};
 
 pub struct Row {
-    pub columns: Vec<Option<AnyElement>>,
+    pub datums: Vec<AnyDatum>,
 }
 
 impl IntoHeapTuple for Row {
-    unsafe fn into_heap_tuple(
-        self,
-        tupdesc: *mut pg_sys::TupleDescData,
-    ) -> *mut pg_sys::HeapTupleData {
-        let mut datums = Vec::with_capacity(self.columns.len());
-        let mut is_nulls = Vec::with_capacity(self.columns.len());
+    unsafe fn into_heap_tuple(self, tupdesc: *mut pg_sys::TupleDescData) -> *mut pg_sys::HeapTupleData {
+        let mut datums = Vec::with_capacity(self.datums.len());
+        let mut is_nulls = Vec::with_capacity(self.datums.len());
 
-        for (ordinal, any_element) in self.columns.iter().enumerate() {
-            match any_element {
-                Some(any_element) => {
-                    assert_eq!(
-                        // Ordinals are 1-indexed
-                        pg_sys::SPI_gettypeid(tupdesc, (ordinal + 1) as i32),
-                        any_element.oid()
-                    );
-
-                    datums.push(any_element.datum());
+        for any_datum in self.datums.into_iter() {
+            match any_datum.into_datum() {
+                Some(datum) => {
+                    datums.push(datum);
                     is_nulls.push(false);
                 }
                 None => {

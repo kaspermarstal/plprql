@@ -2,11 +2,12 @@ use pgrx::prelude::*;
 
 pg_module_magic!();
 
+mod anydatum;
 mod call;
 mod err;
 mod fun;
-mod row;
 mod plprql;
+mod row;
 
 /// This module is required by `cargo pgrx test` invocations.
 /// It must be visible at the root of your extension crate.
