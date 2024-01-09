@@ -7,10 +7,10 @@ use prql_compiler::{compile, sql::Dialect, ErrorMessages, Options, Target};
 extension_sql!(
     "create language plprql
     handler plprql_call_handler
-    validator plprql_validator;
+    validator plprql_call_validator;
     comment on language plprql is 'PRQL procedural language';",
     name = "language_handler",
-    requires = [plprql_call_handler, plprql_validator]
+    requires = [plprql_call_handler, plprql_call_validator]
 );
 
 #[pg_extern(sql = "
@@ -20,21 +20,17 @@ extension_sql!(
 unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
     let function = Function::from_call_info(function_call_info)?;
 
-    match function.return_type() {
-        Return::Table => Ok(TableIterator::srf_next(
-            function_call_info,
-            return_table_iterator(&function),
-        )),
-        Return::SetOf => Ok(SetOfIterator::srf_next(
-            function_call_info,
-            return_setof_iterator(&function),
-        )),
-        Return::Scalar => Ok(return_scalar(&function)),
-    }
+    let datum = match function.return_type() {
+        Return::Table => TableIterator::srf_next(function_call_info, return_table_iterator(&function)),
+        Return::SetOf => SetOfIterator::srf_next(function_call_info, return_setof_iterator(&function)),
+        Return::Scalar => return_scalar(&function),
+    };
+
+    Ok(datum)
 }
 
 #[pg_extern]
-unsafe fn plprql_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
+unsafe fn plprql_call_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
     // TODO
 }
 
@@ -513,5 +509,104 @@ mod tests {
 
             Ok(())
         })
+    }
+
+    // This approach to dynamic queries fails with 'a column definition list is required for functions returning "record"'
+    // In this example, replacing "returns setof record" with "returns setof base.people" resolves the error
+    // but the fixed return type defeats the purpose of dynamic queries.
+    #[ignore]
+    #[pg_test]
+    fn test_return_record() {
+        Spi::connect(|mut client| {
+            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+
+            _ = client.update(
+                r#"
+                    create function prql(str text) returns setof record as $$
+                    begin
+                        return query execute prql_to_sql(str);
+                    end;
+                    $$ language plpgsql;
+                    "#,
+                None,
+                None,
+            );
+
+            let people_on_tatooine = client
+                .select(
+                    "select * from prql('from base.people | filter planet_id == 1 | sort name');",
+                    None,
+                    None,
+                )
+                .unwrap()
+                .filter_map(|row| row.get_by_name::<&str, _>("name").unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(
+                people_on_tatooine,
+                vec![
+                    "Anakin Skywalker",
+                    "Beru Whitesun lars",
+                    "Biggs Darklighter",
+                    "C-3PO",
+                    "Cliegg Lars",
+                    "Darth Vader",
+                    "Luke Skywalker",
+                    "Owen Lars",
+                    "R5-D4",
+                    "Shmi Skywalker"
+                ]
+            );
+        });
+    }
+
+    #[pg_test]
+    fn test_return_cursor() {
+        Spi::connect(|mut client| {
+            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+
+            // 'a column definition list is required for functions returning "record"'
+            _ = client.update(
+                r#"
+                    create function prql(str text) returns refcursor as $$
+                    declare
+                        cursor refcursor := 'prql_cursor';
+                    begin
+                        open cursor for execute prql_to_sql(str);
+                        return (cursor);
+                    end;
+                    $$ language plpgsql;
+                    "#,
+                None,
+                None,
+            );
+
+            let people_on_tatooine = client
+                .select(
+                    r#"
+                        select prql('from base.people | filter planet_id == 1 | sort name');
+                        fetch 8 from prql_cursor;
+                    "#,
+                    None,
+                    None,
+                )
+                .unwrap()
+                .filter_map(|row| row.get_by_name::<&str, _>("name").unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(
+                people_on_tatooine,
+                vec![
+                    "Anakin Skywalker",
+                    "Beru Whitesun lars",
+                    "Biggs Darklighter",
+                    "C-3PO",
+                    "Cliegg Lars",
+                    "Darth Vader",
+                    "Luke Skywalker",
+                    "Owen Lars",
+                ]
+            );
+        });
     }
 }
