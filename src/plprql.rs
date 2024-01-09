@@ -565,14 +565,13 @@ mod tests {
         Spi::connect(|mut client| {
             _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
 
-            // 'a column definition list is required for functions returning "record"'
             _ = client.update(
                 r#"
-                    create function prql(str text) returns refcursor as $$
+                    create function prql(prql_str text, cursor_name text) returns refcursor as $$
                     declare
-                        cursor refcursor := 'prql_cursor';
+                        cursor refcursor := cursor_name;
                     begin
-                        open cursor for execute prql_to_sql(str);
+                        open cursor for execute prql_to_sql(prql_str);
                         return (cursor);
                     end;
                     $$ language plpgsql;
@@ -584,7 +583,7 @@ mod tests {
             let people_on_tatooine = client
                 .select(
                     r#"
-                        select prql('from base.people | filter planet_id == 1 | sort name');
+                        select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor');
                         fetch 8 from prql_cursor;
                     "#,
                     None,
