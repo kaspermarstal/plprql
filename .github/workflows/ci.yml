@@ -1,4 +1,4 @@
-name: Build PR
+name: Rust
 
 on:
   push:
