@@ -46,6 +46,20 @@ pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
     compile(&prql, opts)
 }
 
+// Allows user to call "select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor);" and
+// subsequently fetch data using "fetch 8 from prql_cursor;" to fetch data. Useful for e.g. custom SQL in ORMs.
+extension_sql!(
+    "create function prql(str text, cursor_name text) returns refcursor as $$
+    declare
+        cursor refcursor := cursor_name;
+    begin
+        open cursor for execute prql_to_sql(str);
+        return (cursor);
+    end;
+    $$ language plpgsql;"
+    name = "prql_cursor"
+);
+
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
 mod tests {
@@ -564,21 +578,6 @@ mod tests {
     fn test_return_cursor() {
         Spi::connect(|mut client| {
             _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
-
-            _ = client.update(
-                r#"
-                    create function prql(prql_str text, cursor_name text) returns refcursor as $$
-                    declare
-                        cursor refcursor := cursor_name;
-                    begin
-                        open cursor for execute prql_to_sql(prql_str);
-                        return (cursor);
-                    end;
-                    $$ language plpgsql;
-                    "#,
-                None,
-                None,
-            );
 
             let people_on_tatooine = client
                 .select(
