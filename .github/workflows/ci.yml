@@ -26,6 +26,6 @@ jobs:
     - name: Install cargo-pgrx
       run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
     - name: Init pgrx
-      run: cargo pgrx init --${{ matrix.pgversion }}
+      run: cargo pgrx init --${{ matrix.pgversion }} download
     - name: Run tests
       run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pgversion }} --no-default-features
