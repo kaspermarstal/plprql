@@ -17,8 +17,8 @@ jobs:
   Test:
     strategy:
       matrix:
-        os: [ubuntu-latest macos-latest]
-        pg: ["16"]
+        os: [ubuntu-latest]
+        pg: ["12", "13", "14", "15", "16"]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3    
