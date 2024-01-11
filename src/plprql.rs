@@ -4,6 +4,33 @@ use crate::fun::{Function, Return};
 use pgrx::prelude::*;
 use prql_compiler::{compile, sql::Dialect, ErrorMessages, Options, Target};
 
+#[pg_extern]
+pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
+    let opts = &Options {
+        format: false,
+        target: Target::Sql(Some(Dialect::Postgres)),
+        signature_comment: false,
+        color: false,
+    };
+
+    compile(&prql, opts)
+}
+
+// Allows user to call "select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor);" and
+// subsequently fetch data using "fetch 8 from prql_cursor;". Useful for e.g. custom SQL in ORMs.
+extension_sql!(
+    "create function prql(str text, cursor_name text) returns refcursor as $$
+    declare
+        cursor refcursor := cursor_name;
+    begin
+        open cursor for execute prql_to_sql(str);
+        return (cursor);
+    end;
+    $$ language plpgsql;"
+    name = "prql_cursor"
+);
+
+// Allows the user to define PostgreSQL functions with PRQL bodies.
 extension_sql!(
     "create language plprql
     handler plprql_call_handler
@@ -33,32 +60,6 @@ unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> P
 unsafe fn plprql_call_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
     // TODO
 }
-
-#[pg_extern]
-pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
-    let opts = &Options {
-        format: false,
-        target: Target::Sql(Some(Dialect::Postgres)),
-        signature_comment: false,
-        color: false,
-    };
-
-    compile(&prql, opts)
-}
-
-// Allows user to call "select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor);" and
-// subsequently fetch data using "fetch 8 from prql_cursor;" to fetch data. Useful for e.g. custom SQL in ORMs.
-extension_sql!(
-    "create function prql(str text, cursor_name text) returns refcursor as $$
-    declare
-        cursor refcursor := cursor_name;
-    begin
-        open cursor for execute prql_to_sql(str);
-        return (cursor);
-    end;
-    $$ language plpgsql;"
-    name = "prql_cursor"
-);
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]

@@ -3,6 +3,7 @@ use std::ffi::CStr;
 use std::fmt;
 
 // From by https://github.com/supabase/wrappers/blob/a27e55a6f284e8bdcbb5d710169bf3b9112ec37e/supabase-wrappers/src/interface.rs
+// Added VARCHAROID and renamed Cell to AnyDatum.
 
 #[derive(Debug)]
 pub enum AnyDatum {

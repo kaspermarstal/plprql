@@ -1,26 +1,29 @@
-# Write PostgreSQL functions with PRQL
+# PRQL in PostgreSQL!
 
-PL/PRQL is a PostgreSQL extension that lets you write PostgreSQL functions with PRQL. For example:
+PL/PRQL is a PostgreSQL extension that lets you write functions with PRQL. For example:
 
 ```sql
-create function listening_statistics(artist text) 
-    returns table (plays integer, longest integer, shortest integer)
-    language plprql as
-$$
-  from tracks
-  filter artist == $1
-  aggregate {
-    plays    = sum plays,
-    longest  = max length,
-    shortest = min length,
-  }
-$$;
+create function people_on_tatooine($1) returns setof people as $$
+    from people 
+    filter planet_id == $1 
+    sort name
+$$ language plprql
+
 ```
 
-The extension is designed to simplify complex PostgreSQL queries with PRQL code. The function can then be used in business logic or other database code. For more information on the design of the extension, see the [design document](design.md) for more information. 
+You can also pass PRQL code to the `prql` function. For example:
+ 
+ ```
+ select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor');
+ ```
+ 
+You can subsequently fetch data using `fetch 8 from prql_cursor;`. This is useful for e.g. custom SQL in ORMs.
 
-The extension implements a Procedural Language (PL) handler for PRQL. PL/PRQL functions serve as intermediaries, compiling the user's PRQL code into SQL statements that PostgreSQL executes. For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), [repository](https://github.com/PRQL/prql), or [playground](https://prql-lang.org/playground/).
+For more information on the design of the extension, see the [design document](DESIGN.md). 
+For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), [repository](https://github.com/PRQL/prql), or [playground](https://prql-lang.org/playground/).
 
+# Intended Use 
+PRQL shines when your SQL queries becomes very long and complex. To convince yourself, take a look at examples on the [PRQL playground](https://prql-lang.org/playground/). You can manage this complexity by porting your most impressive SQL queries to PRQL functions, which can then be used in business logic or other database code. The majority of your database code typically will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
 # Getting started
 Follow these steps to install PL/PRQL from source: 
@@ -47,23 +50,19 @@ Follow these steps to install PL/PRQL from source:
    ```
    You can target a specific PostgreSQL installation by providing the path of another `pg_config` using the `-c` flag.
    
-4. You can also fire up a PostgreSQL installation managed by pgrx specifically for testing and start writing functions right away!
+4. Fire up PostgreSQL and start writing functions right away!
    ```cmd
    $ cargo pgrx run pg16
    psql> create extension plprql;
-   psql> create function plays(artist) 
-     returns int
-     language plprql as
-   $$
-   from tracks
-   filter artist == $1
-   aggregate {
-     plays = sum plays,
-   }
-   $$;
-   psql> select plays('Rammstein');
+   psql> create function people_on_tatooine($1) 
+         returns setof base.people as $$
+             from base.people 
+             filter planet_id == $1 
+             sort name
+         $$ language plprql;
+   psql> select people_on_tatooine(1);
    -----------------
-                   4
+                  10
    ```
 
 ## Running Tests 
