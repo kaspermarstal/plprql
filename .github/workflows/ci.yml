@@ -1,4 +1,4 @@
-name: Test
+name: PL/PRQL
 
 on:
   push:
@@ -14,8 +14,7 @@ env:
   CARGO_INCREMENTAL: "false"
 
 jobs:
-  build:
-    
+  Test:
     strategy:
       matrix:
         os: [ubuntu-latest mac-latest]
