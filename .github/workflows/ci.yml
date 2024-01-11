@@ -19,11 +19,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        version: ["16"]
+        pgversion: ["pg16"]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3    
     - name: Install cargo-pgrx
       run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
     - name: Run tests
-      run: cargo test --package aggregate --features "pg$PG_VER" --no-default-features
+      run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pgversion }} --no-default-features
