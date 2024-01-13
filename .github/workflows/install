@@ -1,0 +1,26 @@
+name: Install
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: "false"
+
+jobs:
+  Install:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3    
+    - name: Install cargo-pgrx
+      run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
+    - name: Install extension
+      run: cargo pgrx install
+    - name: Build package
+      run: cargo pgrx package
