@@ -18,8 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      # ubuntu-latest comes with PostgreSQL 14 pre-installed
     - name: Install PostgreSQL headers
-      run: apt-get install libpq5=14
+      run: sudo apt-get install libpq5=14
     - name: Install cargo-pgrx
       run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
     - name: Init pgrx
