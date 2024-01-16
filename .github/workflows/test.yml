@@ -1,0 +1,31 @@
+name: PL/PRQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: "false"
+
+jobs:
+  Test:
+    strategy:
+      fail-fast: false # We want all of them to run, even if one fails
+      matrix:
+        os: [ ubuntu-latest ]
+        pg: [ "pg12", "pg13", "pg14", "pg15", "pg16" ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install cargo-pgrx
+        run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
+      - name: Init pgrx
+        run: cargo pgrx init --${{ matrix.pg }} download
+      - name: Run tests
+        run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pg }} --no-default-features
