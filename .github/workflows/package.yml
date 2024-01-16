@@ -26,8 +26,8 @@ jobs:
         container: [ "debian" ]
     steps:
       - uses: actions/checkout@v3
-      - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg_version }} (${{ matrix.container }})
+      - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg }} (${{ matrix.container }})
         shell: bash
         run: |
-          docker build --build-arg PG_MAJOR_VER="${{ matrix.pg_version }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.container }}" .
-          docker run pgrx cargo test --no-default-features --features "pg${{ matrix.pg_version }}"
+          docker build --build-arg PG_MAJOR_VER="${{ matrix.pg }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.container }}" .
+          docker run pgrx cargo test --no-default-features --features "pg${{ matrix.pg }}"
