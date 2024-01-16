@@ -28,4 +28,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg_version }} (${{ matrix.container }})
         shell: bash
-        run: ./.github/docker/run-docker.sh ${{ matrix.pg_version}} ${{ matrix.container }}
+        run: |
+          docker build --build-arg PG_MAJOR_VER="$PG_MAJOR_VER" -t plprql -f ".github/docker/Dockerfile.$DOCKERFILE_ID" .
+          docker run pgrx cargo test --no-default-features --features "pg${PG_MAJOR_VER}"
