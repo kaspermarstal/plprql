@@ -30,4 +30,4 @@ jobs:
         shell: bash
         run: |
           docker build --build-arg PG_MAJOR_VER="${{ matrix.pg }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.container }}" .
-          docker run pgrx cargo test --no-default-features --features "pg${{ matrix.pg }}"
+          docker run plprql cargo test --no-default-features --features "pg${{ matrix.pg }}"
