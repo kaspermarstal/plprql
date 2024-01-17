@@ -29,3 +29,14 @@ jobs:
         run: cargo pgrx init --${{ matrix.pg }} download
       - name: Run tests
         run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pg }} --no-default-features
+  Install from source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install cargo-pgrx
+        run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
+      - name: Init pgrx
+        # TODO: Parse major version from psql -c 'select current_setting('server_version')'
+        run: cargo pgrx init --pg14 $(which pg_config)
+      - name: Run tests
+        run: cargo pgrx install --release
