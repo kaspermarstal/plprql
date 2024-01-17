@@ -33,10 +33,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Install PostgreSQL headers
+        run: apt-get install postgres-server-dev
       - name: Install cargo-pgrx
         run: cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
       - name: Init pgrx
         # TODO: Parse major version from psql -c 'select current_setting('server_version')'
         run: cargo pgrx init --pg14 $(which pg_config)
-      - name: Run tests
+      - name: Install PL/PRQL
         run: cargo pgrx install --release
+      - name: Verify installation
+        run: 
