@@ -42,5 +42,3 @@ jobs:
         run: cargo pgrx init --pg14 $(which pg_config)
       - name: Install PL/PRQL
         run: cargo pgrx install --release
-      - name: Verify installation
-        run: 
