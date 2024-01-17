@@ -37,10 +37,11 @@ jobs:
         run: sudo apt-get install postgresql-server-dev-14
       - name: Install cargo-pgrx
         run: | 
+          # TODO: Parse pgrx version from Cargo.toml
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
           # TODO: Parse major version from psql -c 'select current_setting('server_version')'
           cargo pgrx init --pg14 $(which pg_config)
       - name: Install PL/PRQL
-        run: cargo pgrx install --release
+        run: sudo cargo pgrx install --release
       - name: Start postgres
         run: sudo systemctl start postgresql.service
