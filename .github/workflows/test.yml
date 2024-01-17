@@ -29,7 +29,7 @@ jobs:
         run: cargo pgrx init --${{ matrix.pg }} download
       - name: Run tests
         run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pg }} --no-default-features
-  Install from source:
+  Install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
