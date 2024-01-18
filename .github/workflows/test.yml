@@ -44,4 +44,4 @@ jobs:
       - name: Install PL/PRQL
         run: sudo cargo pgrx install --release
       - name: Start postgres
-        run: sudo systemctl start postgresql.service
+        run: systemctl start postgresql.service
