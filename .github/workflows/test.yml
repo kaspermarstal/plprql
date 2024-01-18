@@ -42,6 +42,6 @@ jobs:
           # TODO: Parse major version from psql -c 'select current_setting('server_version')'
           cargo pgrx init --pg14 $(which pg_config)
       - name: Install PL/PRQL
-        run: sudo env "CARGO_HOME=$HOME/.cargo" cargo pgrx install --release
+        run: cargo pgrx install --release
       - name: Start postgres
         run: systemctl start postgresql.service
