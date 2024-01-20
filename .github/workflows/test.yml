@@ -44,8 +44,10 @@ jobs:
           # Touching these files is a workaround for std::canonicalize not working if file does not exist (v0.11.2 cargo-pgrx/src/command/sudo_install.rs#L72)
           # This has been fixed on develop and can be removed when next version of pgrx is released
           sudo touch /usr/share/postgresql/14/extension/plprql--0.0.1.sql
-          sudo touch /usr/lib/postgresql/14/lib/plprql.so
           sudo touch /usr/share/postgresql/14/extension/plprql.control
+          sudo touch /usr/lib/postgresql/14/lib/plprql.so
           cargo pgrx install --no-default-features --release --sudo
-      - name: Start postgres
-        run: systemctl start postgresql.service
+      - name: Start PostgreSQL
+        run: sudo systemctl start postgresql.service
+      - name: Verify install
+        run: psql -c 'create extension plprql;'
