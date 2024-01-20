@@ -50,4 +50,4 @@ jobs:
       - name: Start PostgreSQL
         run: sudo systemctl start postgresql.service
       - name: Verify install
-        run: psql -c 'create extension plprql;'
+        run: psql -U postgres -c 'create extension plprql;'
