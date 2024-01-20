@@ -37,11 +37,15 @@ jobs:
         run: sudo apt-get install postgresql-server-dev-14
       - name: Install cargo-pgrx
         run: | 
-          # TODO: Parse pgrx version from Cargo.toml
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
-          # TODO: Parse major version from psql -c 'select current_setting('server_version')'
           cargo pgrx init --pg14 $(which pg_config)
       - name: Install PL/PRQL
-        run: cargo pgrx install --no-default-features --release --sudo
+        run: |
+          # Touching these files is a workaround for std::canonicalize not working if file does not exist (v0.11.2 cargo-pgrx/src/command/sudo_install.rs#L72)
+          # This has been fixed on develop and can be removed when next version of pgrx is released
+          sudo touch usr/share/postgresql/14/extension/plprql--0.0.1.sql
+          sudo touch /usr/lib/postgresql/14/lib/plprql.so
+          sudo touch /usr/share/postgresql/14/extension/plprql.control
+          cargo pgrx install --no-default-features --release --sudo
       - name: Start postgres
         run: systemctl start postgresql.service
