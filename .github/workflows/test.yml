@@ -57,3 +57,4 @@ jobs:
         run: | 
           createdb -U runner runner
           psql -U runner -c "create extension plprql;"
+          psql -U runner -c "select prql_to_sql('from table');"
