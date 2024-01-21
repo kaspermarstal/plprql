@@ -4,12 +4,12 @@ on:
   # schedule:
   #   - cron: '0 7 * * MON-FRI'
   workflow_dispatch:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
 
 env:
   RUST_BACKTRACE: 1

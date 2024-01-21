@@ -54,4 +54,5 @@ jobs:
           # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
           sudo -u postgres createuser -s -d -r -w runner
       - name: Verify install
-        run: psql -U runner -c 'create extension plprql;'
+        run: | 
+          psql -U runner -c "create database runner;" -c "create extension plprql;"
