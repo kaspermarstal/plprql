@@ -1,0 +1,60 @@
+name: PL/PRQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: "false"
+
+jobs:
+  Test:
+    strategy:
+      fail-fast: false # We want all of them to run, even if one fails
+      matrix:
+        os: [ ubuntu-latest ]
+        pg: [ "pg12", "pg13", "pg14", "pg15", "pg16" ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install cargo-pgrx
+        run: | 
+          cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
+          cargo pgrx init --${{ matrix.pg }} download
+      - name: Run tests
+        run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pg }} --no-default-features
+  Install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install PostgreSQL headers
+        run: sudo apt-get install postgresql-server-dev-14
+      - name: Install cargo-pgrx
+        run: | 
+          cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
+          cargo pgrx init --pg14 $(which pg_config)
+      - name: Install PL/PRQL
+        run: |
+          # Touching these files is a workaround for std::canonicalize not working if file does not exist (v0.11.2 cargo-pgrx/src/command/sudo_install.rs#L72)
+          # This has been fixed on develop and can be removed when next version of pgrx is released
+          sudo touch /usr/share/postgresql/14/extension/plprql--0.0.1.sql
+          sudo touch /usr/share/postgresql/14/extension/plprql.control
+          sudo touch /usr/lib/postgresql/14/lib/plprql.so
+          cargo pgrx install --no-default-features --release --sudo
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          pg_isready
+          # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
+          sudo -u postgres createuser -s -d -r -w runner
+      - name: Verify install
+        run: | 
+          createdb -U runner runner
+          psql -U runner -c "create extension plprql;"
+          psql -U runner -c "select prql_to_sql('from table');"
