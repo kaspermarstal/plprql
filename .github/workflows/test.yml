@@ -48,6 +48,10 @@ jobs:
           sudo touch /usr/lib/postgresql/14/lib/plprql.so
           cargo pgrx install --no-default-features --release --sudo
       - name: Start PostgreSQL
-        run: sudo systemctl start postgresql.service
+        run: |
+          sudo systemctl start postgresql.service
+          pg_isready
+          # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
+          sudo -u postgres createuser -s -d -r -w runner
       - name: Verify install
-        run: PGPASSWORD=postgres psql -U postgres -c 'create extension plprql;'
+        run: psql -U runner -c 'create extension plprql;'
