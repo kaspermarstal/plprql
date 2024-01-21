@@ -55,4 +55,5 @@ jobs:
           sudo -u postgres createuser -s -d -r -w runner
       - name: Verify install
         run: | 
-          psql -U runner -c "create database runner;" -c "create extension plprql;"
+          createdb -U runner runner
+          psql -U runner -c "create extension plprql;"
