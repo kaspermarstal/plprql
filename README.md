@@ -3,10 +3,18 @@
 PL/PRQL is a PostgreSQL extension that lets you write functions with PRQL. For example:
 
 ```sql
-create function people_on_tatooine($1) returns setof people as $$
-    from people 
-    filter planet_id == $1 
-    sort name
+create function player_stats(int) returns table(player text, kd_ratio real) as $$
+  from rounds
+  filter match_id == $1
+  group player (
+    aggregate {
+      total_kills = sum kills,
+      total_deaths = sum deaths
+    }
+  )
+  filter total_deaths > 0
+  derive kd_ratio = total_kills / total_deaths
+  select { player, kd_ratio }
 $$ language plprql
 
 ```
@@ -14,20 +22,22 @@ $$ language plprql
 You can also pass PRQL code to the `prql` function. For example:
  
  ```
- select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor');
+ select prql('from rounds | filter match_id == 1, 'rounds_cursor');
  ```
  
-You can subsequently fetch data using `fetch 8 from prql_cursor;`. This is useful for e.g. custom SQL in ORMs.
+You can subsequently fetch data using `fetch 8 from rounds_cursor;`. This is useful for e.g. custom SQL in ORMs.
+
+PRQL shines when your SQL queries becomes very long and complex. For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), [playground](https://prql-lang.org/playground/) or [repository](https://github.com/PRQL/prql). 
 
 For more information on the design of the extension, see the [design document](DESIGN.md). 
-For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), [repository](https://github.com/PRQL/prql), or [playground](https://prql-lang.org/playground/).
+
 
 # Intended Use 
-PRQL shines when your SQL queries becomes very long and complex. You can manage this complexity by porting your most impressive SQL queries to PRQL functions, which can then be used in business logic or other database code. 
+Manage the complexity of analytical SQL queries by porting them to PRQL functions, which can then be used in dashboards, business logic or other database code. 
 
 > [!NOTE]
 >
-> PRQL supports `select` statements only. The majority of your database code, including `insert`, `update`, and `delete` statements, will typically continue to live in vanilla SQL, ORMs, or other database frameworks.
+> PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, along with most of you database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
 # Getting started
 On Ubuntu, follow these steps to install PL/PRQL from source:
@@ -64,15 +74,16 @@ On Ubuntu, follow these steps to install PL/PRQL from source:
    ```cmd
    $ cargo pgrx run pg16
    psql> create extension plprql;
-   psql> create function people_on_tatooine($1) 
-         returns setof base.people as $$
-             from base.people 
-             filter planet_id == $1 
-             sort name
-         $$ language plprql;
-   psql> select people_on_tatooine(1);
-   -----------------
-                  10
+   psql> create function match_stats(int) 
+         returns table(total_kills real, total_deaths real) as $$
+           from rounds
+           filter match_id == $1
+           aggregate {
+             total_kills = sum kills,
+             total_deaths = sum deaths
+           }
+         $$ language plprql
+   psql> select match_stats(1);
    ```
 
 ## Running Tests 
