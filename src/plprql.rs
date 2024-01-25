@@ -153,11 +153,11 @@ mod tests {
                     as $$
                     begin
                         return query
-                        select a.name as character, b.name as planet
-                        from base.people a
-                        inner join base.planet b on a.planet_id=b.id
-                        where a.name like '%Skywalker%'
-                        order BY a.name ASC;
+                            select a.name as character, b.name as planet
+                            from base.people a
+                            inner join base.planet b on a.planet_id=b.id
+                            where a.name like '%Skywalker%'
+                            order BY a.name ASC;
                     end;
                     $$ language plpgsql;
                     "#,
@@ -583,8 +583,8 @@ mod tests {
             let people_on_tatooine = client
                 .select(
                     r#"
-                        select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor');
-                        fetch 8 from prql_cursor;
+                        select prql('from base.people | filter planet_id == 1 | sort name', 'people_on_tatooine_cursor');
+                        fetch 8 from people_on_tatooine_cursor;
                     "#,
                     None,
                     None,
@@ -606,6 +606,105 @@ mod tests {
                     "Owen Lars",
                 ]
             );
+        });
+    }
+
+    #[pg_test]
+    fn test_readme_examples() {
+        Spi::connect(|mut client| {
+            _ = client.update(
+                r#"
+                    create table matches (
+                        id serial primary key,
+                        match_id int,
+                        round int,
+                        player text,
+                        kills float,
+                        deaths float
+                    );
+                    
+                    insert into matches (match_id, round, player, kills, deaths) values
+                        (1001, 1, 'Player1', 4, 1),
+                        (1001, 1, 'Player2', 1, 4),
+                        (1001, 2, 'Player1', 1, 7),
+                        (1001, 2, 'Player2', 7, 1),
+                        (1002, 1, 'Player1', 5, 2),
+                        (1002, 1, 'Player2', 2, 5),
+                        (1002, 2, 'Player1', 6, 3),
+                        (1002, 2, 'Player2', 3, 6);
+                    "#,
+                None,
+                None,
+            );
+
+            _ = client.update(
+                r#"
+                    create function player_stats(int) returns table(player text, kd_ratio float) as $$
+                        from matches
+                        filter match_id == $1
+                        group player (
+                            aggregate {
+                                total_kills = sum kills,
+                                total_deaths = sum deaths
+                            }
+                        )
+                        filter total_deaths > 0
+                        derive kd_ratio = total_kills / total_deaths
+                        select { player, kd_ratio }
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+
+            let player_stats = client
+                .select("select * from player_stats(1001);", None, None)
+                .unwrap()
+                .filter_map(|r| {
+                    r.get_by_name::<&str, _>("player")
+                        .unwrap()
+                        .zip(r.get_by_name::<f64, _>("kd_ratio").unwrap())
+                })
+                .collect::<Vec<_>>();
+
+            assert_eq!(player_stats, vec![("Player1", 0.625f64), ("Player2", 1.6f64)]);
+
+            let sql = client.select(
+                r#"
+                        select prql_to_sql('
+                            from matches
+                            filter match_id == $1
+                            group player (
+                                aggregate {
+                                    total_kills = sum kills,
+                                    total_deaths = sum deaths
+                                }
+                            )
+                            filter total_deaths > 0
+                            derive kd_ratio = total_kills / total_deaths
+                            select { player, kd_ratio }
+                        ');
+                    "#,
+                None,
+                None,
+            );
+
+            assert_eq!(sql.unwrap().first().get_one::<&str>(), Ok(Some("WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0")));
+
+            let player1_kills = client
+                .select(
+                    r#"
+                        select prql('from matches | filter player == ''Player1''', 'player1_cursor');
+                        fetch 2 from player1_cursor;
+                    "#,
+                    None,
+                    None,
+                )
+                .unwrap()
+                .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(player1_kills, vec![4f64, 1f64]);
         });
     }
 }
