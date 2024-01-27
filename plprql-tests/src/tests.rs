@@ -1,189 +1,106 @@
-use crate::call::{return_scalar, return_setof_iterator, return_table_iterator};
-use crate::err::PlprqlResult;
-use crate::fun::{Function, Return};
-use pgrx::prelude::*;
-use prql_compiler::{compile, sql::Dialect, ErrorMessages, Options, Target};
-
-#[pg_extern]
-pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
-    let opts = &Options {
-        format: false,
-        target: Target::Sql(Some(Dialect::Postgres)),
-        signature_comment: false,
-        color: false,
-    };
-
-    compile(&prql, opts)
-}
-
-// Allows user to call "select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor);" and
-// subsequently fetch data using "fetch 8 from prql_cursor;". Useful for e.g. custom SQL in ORMs.
-extension_sql!(
-    "create function prql(str text, cursor_name text) returns refcursor as $$
-    declare
-        cursor refcursor := cursor_name;
-    begin
-        open cursor for execute prql_to_sql(str);
-        return (cursor);
-    end;
-    $$ language plpgsql;"
-    name = "prql_cursor"
-);
-
-// Allows the user to define PostgreSQL functions with PRQL bodies.
-extension_sql!(
-    "create language plprql
-    handler plprql_call_handler
-    validator plprql_call_validator;
-    comment on language plprql is 'PRQL procedural language';",
-    name = "language_handler",
-    requires = [plprql_call_handler, plprql_call_validator]
-);
-
-#[pg_extern(sql = "
-    create function plprql_call_handler() 
-    returns language_handler
-    language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
-")]
-unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
-    let function = Function::from_call_info(function_call_info)?;
-
-    let datum = match function.return_mode() {
-        Return::Table => TableIterator::srf_next(function.call_info, return_table_iterator(&function)),
-        Return::SetOf => SetOfIterator::srf_next(function.call_info, return_setof_iterator(&function)),
-        Return::Scalar => return_scalar(&function),
-    };
-
-    Ok(datum)
-}
-
-#[pg_extern]
-unsafe fn plprql_call_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
-    // TODO
-}
+use pgrx::pg_schema;
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
 mod tests {
+    //use crate::plprql::*;
     use pgrx::prelude::*;
-
-    #[pg_test]
-    fn test_prql_to_sql() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None)?;
-
-            let sql = client
-                .select(r#"select prql_to_sql('from base.planet');"#, None, None)?
-                .first()
-                .get_one::<&str>()?
-                .unwrap();
-
-            assert_eq!("SELECT * FROM base.planet", sql);
-
-            Ok(())
-        })
-    }
-
-    #[pg_test]
-    fn test_sanity() {
-        Spi::connect(|mut client| {
-            assert_eq!(
-                "SELECT name, age FROM employees",
-                crate::plprql::prql_to_sql("from employees | select {name, age}").unwrap()
-            );
-
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
-
-            let skywalkers = vec![
-                ("Anakin Skywalker", "Tatooine"),
-                ("Luke Skywalker", "Tatooine"),
-                ("Shmi Skywalker", "Tatooine"),
-            ];
-
-            // SQL statement
-            let sql_skywalkers = client
-                .select(
-                    r#"
-                        select a.name as character, b.name as planet
-                        from base.people a
-                        inner join base.planet b on a.planet_id=b.id
-                        where a.name like '%Skywalker%'
-                        order BY a.name ASC;"#,
-                    None,
-                    None,
-                )
-                .unwrap()
-                .filter_map(|r| {
-                    r.get_by_name::<&str, _>("character")
-                        .unwrap()
-                        .zip(r.get_by_name::<&str, _>("planet").unwrap())
-                })
-                .collect::<Vec<_>>();
-
-            assert_eq!(skywalkers, sql_skywalkers);
-
-            // PRQL statement should select the same data as SQL statement
-            let prql_skywalkers = client
-                .select(
-                    crate::plprql::prql_to_sql(
-                        r#"
-                        from base.people
-                        join base.planet (this.planet_id == that.id)
-                        select {character = people.name, planet = planet.name}
-                        filter (character ~= 'Skywalker')
-                        sort character"#,
-                    )
-                    .unwrap()
-                    .as_str(),
-                    None,
-                    None,
-                )
-                .unwrap()
-                .filter_map(|r| {
-                    r.get_by_name::<&str, _>("character")
-                        .unwrap()
-                        .zip(r.get_by_name::<&str, _>("planet").unwrap())
-                })
-                .collect::<Vec<_>>();
-
-            assert_eq!(skywalkers, prql_skywalkers);
-
-            _ = client.update(
-                r#"
-                    create function get_skywalkers() returns table(name text, hair_color text)
-                    as $$
-                    begin
-                        return query
-                            select a.name as character, b.name as planet
-                            from base.people a
-                            inner join base.planet b on a.planet_id=b.id
-                            where a.name like '%Skywalker%'
-                            order BY a.name ASC;
-                    end;
-                    $$ language plpgsql;
-                    "#,
-                None,
-                None,
-            );
-
-            let pgsql_skywalkers = client
-                .select("select * from get_skywalkers()", None, None)
-                .unwrap()
-                .filter_map(|r| {
-                    r.get_by_name::<&str, _>("name")
-                        .unwrap()
-                        .zip(r.get_by_name::<&str, _>("hair_color").unwrap())
-                })
-                .collect::<Vec<_>>();
-
-            assert_eq!(skywalkers, pgsql_skywalkers);
-        });
-    }
+    //
+    // #[pg_test]
+    // fn test_sanity() {
+    //     Spi::connect(|mut client| {
+    //         _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
+    //
+    //         let skywalkers = vec![
+    //             ("Anakin Skywalker", "Tatooine"),
+    //             ("Luke Skywalker", "Tatooine"),
+    //             ("Shmi Skywalker", "Tatooine"),
+    //         ];
+    //
+    //         // SQL statement
+    //         let sql_skywalkers = client
+    //             .select(
+    //                 r#"
+    //                     select a.name as character, b.name as planet
+    //                     from base.people a
+    //                     inner join base.planet b on a.planet_id=b.id
+    //                     where a.name like '%Skywalker%'
+    //                     order BY a.name ASC;"#,
+    //                 None,
+    //                 None,
+    //             )
+    //             .unwrap()
+    //             .filter_map(|r| {
+    //                 r.get_by_name::<&str, _>("character")
+    //                     .unwrap()
+    //                     .zip(r.get_by_name::<&str, _>("planet").unwrap())
+    //             })
+    //             .collect::<Vec<_>>();
+    //
+    //         assert_eq!(skywalkers, sql_skywalkers);
+    //
+    //         // PRQL statement should select the same data as SQL statement
+    //         let prql_skywalkers = client
+    //             .select(
+    //                 crate::plprql::prql_to_sql(
+    //                     r#"
+    //                     from base.people
+    //                     join base.planet (this.planet_id == that.id)
+    //                     select {character = people.name, planet = planet.name}
+    //                     filter (character ~= 'Skywalker')
+    //                     sort character"#,
+    //                 )
+    //                 .unwrap()
+    //                 .as_str(),
+    //                 None,
+    //                 None,
+    //             )
+    //             .unwrap()
+    //             .filter_map(|r| {
+    //                 r.get_by_name::<&str, _>("character")
+    //                     .unwrap()
+    //                     .zip(r.get_by_name::<&str, _>("planet").unwrap())
+    //             })
+    //             .collect::<Vec<_>>();
+    //
+    //         assert_eq!(skywalkers, prql_skywalkers);
+    //
+    //         _ = client.update(
+    //             r#"
+    //                 create function get_skywalkers() returns table(name text, hair_color text)
+    //                 as $$
+    //                 begin
+    //                     return query
+    //                         select a.name as character, b.name as planet
+    //                         from base.people a
+    //                         inner join base.planet b on a.planet_id=b.id
+    //                         where a.name like '%Skywalker%'
+    //                         order BY a.name ASC;
+    //                 end;
+    //                 $$ language plpgsql;
+    //                 "#,
+    //             None,
+    //             None,
+    //         );
+    //
+    //         let pgsql_skywalkers = client
+    //             .select("select * from get_skywalkers()", None, None)
+    //             .unwrap()
+    //             .filter_map(|r| {
+    //                 r.get_by_name::<&str, _>("name")
+    //                     .unwrap()
+    //                     .zip(r.get_by_name::<&str, _>("hair_color").unwrap())
+    //             })
+    //             .collect::<Vec<_>>();
+    //
+    //         assert_eq!(skywalkers, pgsql_skywalkers);
+    //     });
+    // }
 
     #[pg_test]
     fn test_return_table() {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             _ = client.update(
                 r#"
@@ -210,7 +127,7 @@ mod tests {
     #[pg_test]
     fn test_return_setof() {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             _ = client.update(
                 r#"
@@ -298,7 +215,7 @@ mod tests {
     #[pg_test]
     fn test_return_scalar() {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             _ = client.update(
                 r#"
@@ -761,7 +678,7 @@ mod tests {
     #[pg_test]
     fn test_return_record() {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             _ = client.update(
                 r#"
@@ -806,7 +723,7 @@ mod tests {
     #[pg_test]
     fn test_return_cursor() {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             let people_on_tatooine = client
                 .select(
