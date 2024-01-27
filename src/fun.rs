@@ -70,7 +70,7 @@ impl Function {
         self.pg_proc.prosrc()
     }
 
-    pub fn return_type(&self) -> Return {
+    pub fn return_mode(&self) -> Return {
         match (
             self.pg_proc.proretset(),
             self.pg_proc.proargmodes().contains(&ProArgMode::Table),

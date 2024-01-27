@@ -41,15 +41,16 @@ extension_sql!(
 );
 
 #[pg_extern(sql = "
-    create function plprql_call_handler() returns language_handler
+    create function plprql_call_handler() 
+    returns language_handler
     language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
 unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
     let function = Function::from_call_info(function_call_info)?;
 
-    let datum = match function.return_type() {
-        Return::Table => TableIterator::srf_next(function_call_info, return_table_iterator(&function)),
-        Return::SetOf => SetOfIterator::srf_next(function_call_info, return_setof_iterator(&function)),
+    let datum = match function.return_mode() {
+        Return::Table => TableIterator::srf_next(function.call_info, return_table_iterator(&function)),
+        Return::SetOf => SetOfIterator::srf_next(function.call_info, return_setof_iterator(&function)),
         Return::Scalar => return_scalar(&function),
     };
 
