@@ -15,9 +15,7 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn from_call_info(
-        function_call_info: pg_sys::FunctionCallInfo,
-    ) -> Result<Self, PlprqlError> {
+    pub fn from_call_info(function_call_info: pg_sys::FunctionCallInfo) -> Result<Self, PlprqlError> {
         let function_oid = unsafe {
             function_call_info
                 .as_ref()

@@ -324,7 +324,7 @@ mod tests {
                 r#"
                     create table "supported_types"
                     (
-                        "int_" int not null,
+                        "int_" int,
                         "int2_" int2,
                         "int4_" int4, 
                         "int8_" int8,
@@ -342,7 +342,7 @@ mod tests {
                         "text_" text,
                         "varchar_" varchar(10),
                         "jsonb_" jsonb,
-                        primary key ("int_")
+                        primary key ("serial_")
                     );
                     
                     insert into "supported_types" (
@@ -386,14 +386,7 @@ mod tests {
                         '{"key": "value"}' -- jsonb
                     );
 
-                    "#,
-                None,
-                None,
-            );
-
-            _ = client.update(
-                r#"
-                    create function get_supported_types() returns table(
+                    create function get_supported_types(int) returns table(
                         "int_" int,
                         "int2_" int2,
                         "int4_" int4, 
@@ -414,7 +407,7 @@ mod tests {
                         "jsonb_" jsonb
                     ) as $$
                         from supported_types
-                        filter int_ == 0
+                        filter serial_ == $1
                     $$ language plprql;
                     "#,
                 None,
@@ -422,7 +415,7 @@ mod tests {
             );
 
             let supported_types = client
-                .select("select * from get_supported_types()", None, None)?
+                .select("select * from get_supported_types(1)", None, None)?
                 .first();
 
             assert_eq!(
@@ -527,6 +520,240 @@ mod tests {
         })
     }
 
+    #[pg_test]
+    fn test_null_handling() -> Result<(), pgrx::spi::Error> {
+        Spi::connect(|mut client| {
+            // Test TableIterator's null handling
+            _ = client.update(
+                r#"
+                    create table "null_values"
+                    (
+                        "int_" int,
+                        "int2_" int2,
+                        "int4_" int4, 
+                        "int8_" int8,
+                        "smallint_" smallint,
+                        "integer_" integer,
+                        "bigint_" bigint,
+                        "numeric_" numeric,
+                        "real_" real,
+                        "double_" double precision,
+                        "float4_" float4,
+                        "float8_" float8,
+                        "serial_" serial,
+                        "text_" text,
+                        "varchar_" varchar(10),
+                        "jsonb_" jsonb,
+                        primary key ("serial_")
+                    );
+                    
+                    insert into "null_values" (
+                        "serial_"
+                    )
+                    values (
+                        DEFAULT -- serial_ (auto-incremented)
+                    );
+                    
+                    create function get_null_values(int) returns table(
+                        "int_" int,
+                        "int2_" int2,
+                        "int4_" int4, 
+                        "int8_" int8,
+                        "smallint_" smallint,
+                        "integer_" integer,
+                        "bigint_" bigint,
+                        "numeric_" numeric,
+                        "real_" real,
+                        "double_" double precision,
+                        "float4_" float4,
+                        "float8_" float8,
+                        "serial_" integer,
+                        "text_" text,
+                        "varchar_" varchar(10),
+                        "jsonb_" jsonb
+                    ) as $$
+                        from null_values
+                        filter serial_ == $1
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+
+            let null_values = client.select("select * from get_null_values(1)", None, None)?.first();
+
+            assert_eq!(null_values.get::<i32>(null_values.column_ordinal("int_")?)?, None);
+
+            assert_eq!(null_values.get::<i16>(null_values.column_ordinal("int2_")?)?, None);
+
+            assert_eq!(null_values.get::<i32>(null_values.column_ordinal("int4_")?)?, None);
+
+            assert_eq!(null_values.get::<i64>(null_values.column_ordinal("int8_")?)?, None);
+
+            assert_eq!(null_values.get::<i32>(null_values.column_ordinal("smallint_")?)?, None);
+
+            assert_eq!(null_values.get::<i32>(null_values.column_ordinal("integer_")?)?, None);
+
+            assert_eq!(null_values.get::<i64>(null_values.column_ordinal("bigint_")?)?, None);
+
+            assert_eq!(
+                null_values.get::<AnyNumeric>(null_values.column_ordinal("numeric_")?)?,
+                None
+            );
+
+            assert_eq!(null_values.get::<f32>(null_values.column_ordinal("real_")?)?, None);
+
+            assert_eq!(null_values.get::<f64>(null_values.column_ordinal("double_")?)?, None);
+
+            assert_eq!(null_values.get::<f32>(null_values.column_ordinal("float4_")?)?, None);
+
+            assert_eq!(null_values.get::<f64>(null_values.column_ordinal("float8_")?)?, None);
+
+            assert_eq!(null_values.get::<String>(null_values.column_ordinal("text_")?)?, None);
+
+            assert_eq!(
+                null_values.get::<String>(null_values.column_ordinal("varchar_")?)?,
+                None
+            );
+
+            use pgrx::JsonB;
+            use serde::{Deserialize, Serialize};
+
+            #[derive(Serialize, Deserialize, PartialEq)]
+            struct JsonbStruct {
+                key: String,
+            }
+
+            let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
+
+            assert!(matches!(jsonb, None));
+
+            // Test SetOf's null handling
+            _ = client.update(
+                r#"
+                    create function get_setof_null_values(int) returns setof null_values as $$
+                        from null_values
+                        filter serial_ == $1
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+
+            let setof_null_values = client
+                .select("select * from get_setof_null_values(1)", None, None)?
+                .first();
+
+            assert_eq!(
+                setof_null_values.get::<i32>(setof_null_values.column_ordinal("int_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<i16>(setof_null_values.column_ordinal("int2_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<i32>(setof_null_values.column_ordinal("int4_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<i64>(setof_null_values.column_ordinal("int8_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<i32>(setof_null_values.column_ordinal("smallint_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<i32>(setof_null_values.column_ordinal("integer_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<i64>(setof_null_values.column_ordinal("bigint_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<AnyNumeric>(setof_null_values.column_ordinal("numeric_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<f32>(setof_null_values.column_ordinal("real_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<f64>(setof_null_values.column_ordinal("double_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<f32>(setof_null_values.column_ordinal("float4_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<f64>(setof_null_values.column_ordinal("float8_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<String>(setof_null_values.column_ordinal("text_")?)?,
+                None
+            );
+
+            assert_eq!(
+                setof_null_values.get::<String>(setof_null_values.column_ordinal("varchar_")?)?,
+                None
+            );
+
+            let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
+
+            assert!(matches!(jsonb, None));
+
+            // Test Scalar's null handling
+            _ = client.update(
+                r#"
+                    create function get_null_int() returns int as $$
+                        from null_values
+                        filter int_ == null
+                        select { int_ }
+                        take(1)
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+
+            assert_eq!(Spi::get_one::<i32>("select get_null_int()")?, None);
+
+            _ = client.update(
+                r#"
+                    create function get_null_text() returns text as $$
+                        from null_values
+                        filter text_ == null
+                        select { text_ }
+                        take(1)
+                    $$ language plprql;
+                    "#,
+                None,
+                None,
+            );
+
+            assert_eq!(Spi::get_one::<&str>("select get_null_text()")?, None);
+
+            Ok(())
+        })
+    }
+
+    // TODO: Find a way to support functions with dynamic return type. This may be impossible.
     // This approach to dynamic queries fails with 'a column definition list is required for functions returning "record"'
     // In this example, replacing "returns setof record" with "returns setof base.people" resolves the error
     // but the fixed return type defeats the purpose of dynamic queries.

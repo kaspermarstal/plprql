@@ -2,6 +2,7 @@ use crate::anydatum::AnyDatum;
 use crate::fun::Function;
 use crate::plprql::prql_to_sql;
 use crate::row::Row;
+use pgrx::pg_return_null;
 use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
 
@@ -23,9 +24,8 @@ pub(crate) fn return_table_iterator(function: &Function) -> impl FnOnce() -> Opt
                                 .report()
                                 .value::<AnyDatum>()
                                 .report()
-                                .unwrap()
                         })
-                        .collect::<Vec<AnyDatum>>(),
+                        .collect::<Vec<Option<AnyDatum>>>(),
                 })
                 .collect::<Vec<Row>>();
 
@@ -40,10 +40,10 @@ pub(crate) fn return_table_iterator(function: &Function) -> impl FnOnce() -> Opt
 
 pub(crate) fn return_setof_iterator(
     function: &Function,
-) -> impl FnOnce() -> Option<SetOfIterator<'static, AnyDatum>> + '_ {
-    || -> Option<SetOfIterator<'static, AnyDatum>> {
-        let sql = prql_to_sql(&function.body()).unwrap();
-        let arguments = function.arguments().unwrap();
+) -> impl FnOnce() -> Option<SetOfIterator<'static, Option<AnyDatum>>> + '_ {
+    || -> Option<SetOfIterator<'static, Option<AnyDatum>>> {
+        let sql = prql_to_sql(&function.body()).report();
+        let arguments = function.arguments().report();
 
         Spi::connect(|client| {
             let column = client
@@ -56,9 +56,8 @@ pub(crate) fn return_setof_iterator(
                         .report()
                         .value::<AnyDatum>()
                         .report()
-                        .unwrap()
                 })
-                .collect::<Vec<AnyDatum>>();
+                .collect::<Vec<Option<AnyDatum>>>();
 
             if column.is_empty() {
                 return None;
@@ -82,5 +81,5 @@ pub(crate) fn return_scalar(function: &Function) -> pg_sys::Datum {
             .report()
             .into_datum()
     })
-    .unwrap_or_else(|| pg_sys::Datum::from(0))
+    .unwrap_or_else(|| unsafe { pg_return_null(function.call_info) })
 }

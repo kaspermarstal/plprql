@@ -2,7 +2,7 @@ use crate::anydatum::AnyDatum;
 use pgrx::{pg_sys, IntoDatum, IntoHeapTuple};
 
 pub struct Row {
-    pub datums: Vec<AnyDatum>,
+    pub datums: Vec<Option<AnyDatum>>,
 }
 
 impl IntoHeapTuple for Row {
