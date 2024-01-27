@@ -8,8 +8,8 @@ use pgrx::prelude::*;
 
 pub(crate) fn return_table_iterator(function: &Function) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
     || -> Option<TableIterator<'static, Row>> {
-        let sql = prql_to_sql(&function.body()).unwrap();
-        let arguments = function.arguments().unwrap();
+        let sql = prql_to_sql(&function.body()).report();
+        let arguments = function.arguments().report();
 
         Spi::connect(|client| {
             let rows = client
@@ -69,8 +69,8 @@ pub(crate) fn return_setof_iterator(
 }
 
 pub(crate) fn return_scalar(function: &Function) -> pg_sys::Datum {
-    let sql = prql_to_sql(&function.body()).unwrap();
-    let arguments = function.arguments().unwrap();
+    let sql = prql_to_sql(&function.body()).report();
+    let arguments = function.arguments().report();
 
     Spi::connect(|client| {
         client
