@@ -1,4 +1,4 @@
-name: PL/PRQL
+name: CI
 
 on:
   push:
@@ -24,11 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install cargo-pgrx
-        run: | 
+        run: |
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
           cargo pgrx init --${{ matrix.pg }} download
+      - name: Install PL/PRQL
+        run: echo "\q" | cargo pgrx run ${{ matrix.pg }}
       - name: Run tests
-        run: cargo test --package plprql --lib plprql::tests --features ${{ matrix.pg }} --no-default-features
+        run: |
+          cd plprql && cargo test --features ${{ matrix.pg }} --no-default-features
+          cd plprql-tests && cargo test --features ${{ matrix.pg }} --no-default-features
   Install:
     runs-on: ubuntu-latest
     steps:
@@ -36,7 +40,7 @@ jobs:
       - name: Install PostgreSQL headers
         run: sudo apt-get install postgresql-server-dev-14
       - name: Install cargo-pgrx
-        run: | 
+        run: |
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
           cargo pgrx init --pg14 $(which pg_config)
       - name: Install PL/PRQL
@@ -46,6 +50,7 @@ jobs:
           sudo touch /usr/share/postgresql/14/extension/plprql--0.0.1.sql
           sudo touch /usr/share/postgresql/14/extension/plprql.control
           sudo touch /usr/lib/postgresql/14/lib/plprql.so
+          cd plprql
           cargo pgrx install --no-default-features --release --sudo
       - name: Start PostgreSQL
         run: |
@@ -54,7 +59,7 @@ jobs:
           # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
           sudo -u postgres createuser -s -d -r -w runner
       - name: Verify install
-        run: | 
+        run: |
           createdb -U runner runner
           psql -U runner -c "create extension plprql;"
           psql -U runner -c "select prql_to_sql('from table');"

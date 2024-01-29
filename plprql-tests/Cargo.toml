@@ -1,5 +1,5 @@
 [package]
-name = "plprql-tests"
+name = "plprql_tests"
 version = "0.0.1"
 edition = "2021"
 
@@ -16,10 +16,9 @@ pg16 = ["pgrx/pg16", "pgrx-tests/pg16"]
 pg_test = []
 
 [dependencies]
-pgrx = { version = "=0.11.2" }
-plprql = { version = "=0.0.1", path = "../plprql", default-features = false }
-serde_json = "1.0.108"
-serde = { version = "1.0.195", features = ["derive"] }
+pgrx = "=0.11.2"
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.112"
 
 [dev-dependencies]
 pgrx-tests = "=0.11.2"
