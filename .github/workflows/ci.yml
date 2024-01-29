@@ -28,11 +28,10 @@ jobs:
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
           cargo pgrx init --${{ matrix.pg }} download
       - name: Install PL/PRQL
-        run: echo "\q" | cargo pgrx run ${{ matrix.pg }}
+        run: cd plprql && echo "\q" | cargo pgrx run ${{ matrix.pg }}
       - name: Run tests
         run: |
-          cd plprql && cargo test --features ${{ matrix.pg }} --no-default-features
-          cd plprql-tests && cargo test --features ${{ matrix.pg }} --no-default-features
+          cargo test --features ${{ matrix.pg }} --no-default-features
   Install:
     runs-on: ubuntu-latest
     steps:
