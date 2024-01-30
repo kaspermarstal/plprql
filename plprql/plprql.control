@@ -1,4 +1,4 @@
-comment = 'plprql:  Created by Kasper Korsholm Marstal'
+comment = 'plprql'
 default_version = '@CARGO_VERSION@'
 module_pathname = '$libdir/plprql'
 relocatable = false

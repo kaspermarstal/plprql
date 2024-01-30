@@ -1,65 +1,10 @@
-use crate::call::{return_scalar, return_setof_iterator, return_table_iterator};
-use crate::err::PlprqlResult;
-use crate::fun::{Function, Return};
 use pgrx::prelude::*;
-use prql_compiler::{compile, sql::Dialect, ErrorMessages, Options, Target};
+
+pg_module_magic!();
 
 #[pg_extern]
-pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
-    let opts = &Options {
-        format: false,
-        target: Target::Sql(Some(Dialect::Postgres)),
-        signature_comment: false,
-        color: false,
-    };
-
-    compile(&prql, opts)
-}
-
-// Allows user to call "select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor);" and
-// subsequently fetch data using "fetch 8 from prql_cursor;". Useful for e.g. custom SQL in ORMs.
-extension_sql!(
-    "create function prql(str text, cursor_name text) returns refcursor as $$
-    declare
-        cursor refcursor := cursor_name;
-    begin
-        open cursor for execute prql_to_sql(str);
-        return (cursor);
-    end;
-    $$ language plpgsql;"
-    name = "prql_cursor"
-);
-
-// Allows the user to define PostgreSQL functions with PRQL bodies.
-extension_sql!(
-    "create language plprql
-    handler plprql_call_handler
-    validator plprql_call_validator;
-    comment on language plprql is 'PRQL procedural language';",
-    name = "language_handler",
-    requires = [plprql_call_handler, plprql_call_validator]
-);
-
-#[pg_extern(sql = "
-    create function plprql_call_handler() 
-    returns language_handler
-    language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
-")]
-unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
-    let function = Function::from_call_info(function_call_info)?;
-
-    let datum = match function.return_mode() {
-        Return::Table => TableIterator::srf_next(function.call_info, return_table_iterator(&function)),
-        Return::SetOf => SetOfIterator::srf_next(function.call_info, return_setof_iterator(&function)),
-        Return::Scalar => return_scalar(&function),
-    };
-
-    Ok(datum)
-}
-
-#[pg_extern]
-unsafe fn plprql_call_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
-    // TODO
+fn pgrx_test() -> &'static str {
+    "Hello, pgrx"
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -68,31 +13,19 @@ mod tests {
     use pgrx::prelude::*;
 
     #[pg_test]
-    fn test_prql_to_sql() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None)?;
-
-            let sql = client
-                .select(r#"select prql_to_sql('from base.planet');"#, None, None)?
-                .first()
-                .get_one::<&str>()?
-                .unwrap();
-
-            assert_eq!("SELECT * FROM base.planet", sql);
-
-            Ok(())
-        })
+    fn test_pgrx_tests() {
+        assert_eq!("Hello, pgrx", crate::pgrx_test());
     }
 
     #[pg_test]
-    fn test_sanity() {
+    fn test_sanity() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
             assert_eq!(
-                "SELECT name, age FROM employees",
-                crate::plprql::prql_to_sql("from employees | select {name, age}").unwrap()
+                Some("SELECT name, age FROM employees"),
+                Spi::get_one::<&str>("select prql_to_sql('from employees | select {name, age}')")?
             );
 
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None)?;
 
             let skywalkers = vec![
                 ("Anakin Skywalker", "Tatooine"),
@@ -115,34 +48,31 @@ mod tests {
                 .unwrap()
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("character")
-                        .unwrap()
-                        .zip(r.get_by_name::<&str, _>("planet").unwrap())
+                        .expect("sql skywalker character")
+                        .zip(r.get_by_name::<&str, _>("planet").expect("sql skywalker planet"))
                 })
                 .collect::<Vec<_>>();
 
             assert_eq!(skywalkers, sql_skywalkers);
 
             // PRQL statement should select the same data as SQL statement
+            let prql_skywalkers_query = Spi::get_one::<&str>(
+                r#"select prql_to_sql('
+                    from base.people
+                    join base.planet (this.planet_id == that.id)
+                    select {character = people.name, planet = planet.name}
+                    filter (character ~= ''Skywalker'')
+                    sort character
+                ')"#,
+            )?
+            .expect("prql_to_sql");
+
             let prql_skywalkers = client
-                .select(
-                    crate::plprql::prql_to_sql(
-                        r#"
-                        from base.people
-                        join base.planet (this.planet_id == that.id)
-                        select {character = people.name, planet = planet.name}
-                        filter (character ~= 'Skywalker')
-                        sort character"#,
-                    )
-                    .unwrap()
-                    .as_str(),
-                    None,
-                    None,
-                )
-                .unwrap()
+                .select(prql_skywalkers_query, None, None)?
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("character")
-                        .unwrap()
-                        .zip(r.get_by_name::<&str, _>("planet").unwrap())
+                        .expect("prql skywalker name")
+                        .zip(r.get_by_name::<&str, _>("planet").expect("prql skywalker planet"))
                 })
                 .collect::<Vec<_>>();
 
@@ -150,7 +80,7 @@ mod tests {
 
             _ = client.update(
                 r#"
-                    create function get_skywalkers() returns table(name text, hair_color text)
+                    create function get_skywalkers() returns table(name text, planet text)
                     as $$
                     begin
                         return query
@@ -164,26 +94,27 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
             let pgsql_skywalkers = client
-                .select("select * from get_skywalkers()", None, None)
-                .unwrap()
+                .select("select * from get_skywalkers()", None, None)?
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("name")
-                        .unwrap()
-                        .zip(r.get_by_name::<&str, _>("hair_color").unwrap())
+                        .expect("pgsql skywalker name")
+                        .zip(r.get_by_name::<&str, _>("planet").expect("pgsql skywalker planet"))
                 })
                 .collect::<Vec<_>>();
 
             assert_eq!(skywalkers, pgsql_skywalkers);
-        });
+
+            Ok(())
+        })
     }
 
     #[pg_test]
-    fn test_return_table() {
+    fn test_return_table() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None)?;
 
             _ = client.update(
                 r#"
@@ -195,22 +126,23 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
-        });
+            )?;
 
-        let should_be_general_grievous: (Option<&str>, Option<i32>) = Spi::get_two_with_args(
-            "select * from get_name_and_height($1)",
-            vec![(PgBuiltInOids::INT4OID.oid(), 79.into_datum())],
-        )
-        .unwrap();
+            let should_be_general_grievous: (Option<&str>, Option<i32>) = Spi::get_two_with_args(
+                "select * from get_name_and_height($1)",
+                vec![(PgBuiltInOids::INT4OID.oid(), 79.into_datum())],
+            )?;
 
-        assert_eq!(should_be_general_grievous, (Some("Grievous"), Some(216)));
+            assert_eq!(should_be_general_grievous, (Some("Grievous"), Some(216)));
+
+            Ok(())
+        })
     }
 
     #[pg_test]
-    fn test_return_setof() {
+    fn test_return_setof() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None)?;
 
             _ = client.update(
                 r#"
@@ -222,7 +154,7 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
             let filtered_heights = client
                 .select("select filter_height(100)", None, None)
@@ -244,7 +176,7 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
             let names_pgsql = client
                 .select("select get_names()", None, None)
@@ -274,7 +206,7 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
             let names_prql = client
                 .select("select get_names()", None, None)
@@ -292,13 +224,15 @@ mod tests {
                     Some("Ayla Secura")
                 )
             );
-        });
+
+            Ok(())
+        })
     }
 
     #[pg_test]
-    fn test_return_scalar() {
+    fn test_return_scalar() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             _ = client.update(
                 r#"
@@ -310,11 +244,13 @@ mod tests {
                 None,
                 None,
             );
-        });
 
-        let should_be_yarael_poof_height: Option<i32> = Spi::get_one("select get_max_height()").unwrap();
+            let should_be_yarael_poof_height: Option<i32> = Spi::get_one("select get_max_height()")?;
 
-        assert_eq!(should_be_yarael_poof_height, Some(264));
+            assert_eq!(should_be_yarael_poof_height, Some(264));
+
+            Ok(())
+        })
     }
 
     #[pg_test]
@@ -753,19 +689,14 @@ mod tests {
         })
     }
 
-    // TODO: Find a way to support functions with dynamic return type. This may be impossible.
-    // This approach to dynamic queries fails with 'a column definition list is required for functions returning "record"'
-    // In this example, replacing "returns setof record" with "returns setof base.people" resolves the error
-    // but the fixed return type defeats the purpose of dynamic queries.
-    #[ignore]
     #[pg_test]
-    fn test_return_record() {
+    fn test_return_record() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             _ = client.update(
                 r#"
-                    create function prql(str text) returns setof record as $$
+                    create function prql1(str text) returns setof record as $$
                     begin
                         return query execute prql_to_sql(str);
                     end;
@@ -777,12 +708,14 @@ mod tests {
 
             let people_on_tatooine = client
                 .select(
-                    "select * from prql('from base.people | filter planet_id == 1 | sort name');",
+                    r#"
+                        select * from 
+                        prql1('from base.people | filter planet_id == 1 | select {name, planet_id} | sort name') 
+                        as t(name text, planet_id int);"#,
                     None,
                     None,
-                )
-                .unwrap()
-                .filter_map(|row| row.get_by_name::<&str, _>("name").unwrap())
+                )?
+                .filter_map(|row| row.get_by_name::<&str, _>("name").expect("record has name"))
                 .collect::<Vec<_>>();
 
             assert_eq!(
@@ -800,13 +733,15 @@ mod tests {
                     "Shmi Skywalker"
                 ]
             );
-        });
+
+            Ok(())
+        })
     }
 
     #[pg_test]
-    fn test_return_cursor() {
+    fn test_return_cursor() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
-            _ = client.update(include_str!("starwars.sql"), None, None).unwrap();
+            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
             let people_on_tatooine = client
                 .select(
@@ -816,8 +751,7 @@ mod tests {
                     "#,
                     None,
                     None,
-                )
-                .unwrap()
+                )?
                 .filter_map(|row| row.get_by_name::<&str, _>("name").unwrap())
                 .collect::<Vec<_>>();
 
@@ -834,11 +768,13 @@ mod tests {
                     "Owen Lars",
                 ]
             );
-        });
+
+            Ok(())
+        })
     }
 
     #[pg_test]
-    fn test_readme_examples() {
+    fn test_readme_examples() -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
             _ = client.update(
                 r#"
@@ -863,7 +799,7 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
             _ = client.update(
                 r#"
@@ -883,11 +819,10 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
             let player_stats = client
-                .select("select * from player_stats(1001);", None, None)
-                .unwrap()
+                .select("select * from player_stats(1001);", None, None)?
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("player")
                         .unwrap()
@@ -915,9 +850,9 @@ mod tests {
                     "#,
                 None,
                 None,
-            );
+            )?;
 
-            assert_eq!(sql.unwrap().first().get_one::<&str>(), Ok(Some("WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0")));
+            assert_eq!(sql.first().get_one::<&str>(), Ok(Some("WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0")));
 
             let player1_kills = client
                 .select(
@@ -927,12 +862,27 @@ mod tests {
                     "#,
                     None,
                     None,
-                )
-                .unwrap()
+                )?
                 .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
                 .collect::<Vec<_>>();
 
             assert_eq!(player1_kills, vec![4f64, 1f64]);
-        });
+
+            Ok(())
+        })
+    }
+}
+
+/// This module is required by `cargo pgrx test` invocations.
+/// It must be visible at the root of your extension crate.
+#[cfg(test)]
+pub mod pg_test {
+    pub fn setup(_options: Vec<&str>) {
+        // perform one-off initialization when the pg_test framework starts
+    }
+
+    pub fn postgresql_conf_options() -> Vec<&'static str> {
+        // return any postgresql.conf settings that are required for your tests
+        vec![]
     }
 }

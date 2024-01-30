@@ -6,10 +6,10 @@ mod anydatum;
 mod call;
 mod err;
 mod fun;
-mod plprql;
+pub mod plprql;
 mod row;
 
-/// This module is required by `cargo pgrx test` invocations.
+/// This module is required by `cargo pgrx tests` invocations.
 /// It must be visible at the root of your extension crate.
 #[cfg(test)]
 pub mod pg_test {
