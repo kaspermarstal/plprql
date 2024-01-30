@@ -23,10 +23,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.pg }}
-          shared-key: ci
       - name: Install cargo-pgrx
         run: |
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
