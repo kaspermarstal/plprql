@@ -134,15 +134,14 @@ On Ubuntu, follow these steps to install PL/PRQL from source:
    ```
 
 ## Running Tests 
-You can now run tests using `cargo pgrx test`. To run tests for all supported versions of PostgreSQL, run
+You can now run tests using `cargo pgrx test pg16`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate.
 
 ```cmd
-cargo pgrx test pg16
-cargo pgrx test pg15
-cargo pgrx test pg14
-cargo pgrx test pg13
-cargo pgrx test pg12
+cd plprql && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
+cd plprql-tests && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
 ```
+
+Supported PostgreSQL versions are `pg12`, `pg13`, `pg14`, `pg15`, and `pg16`.
 
 ## License
 Apache 2.0 License
