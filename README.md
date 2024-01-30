@@ -63,7 +63,7 @@ WHERE
 (1 row)
 ```
 
-You can also run PRQL directly with the `prql` function which is useful for custom SQL in ORMs. For example:
+You can also run PRQL directly with the `prql` function which is useful for custom SQL in ORMs:
  
 ```sql
 select prql('from matches | filter player == ''Player1''', 'player1_cursor');
@@ -85,7 +85,7 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 >
 > PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
-# Getting started
+## Getting started
 On Ubuntu, follow these steps to install PL/PRQL from source:
 
 1. Install `cargo-pgrx`.
@@ -112,6 +112,7 @@ On Ubuntu, follow these steps to install PL/PRQL from source:
 4. Install the extension to the PostgreSQL specified by
    the `pg_config` currently on your `$PATH`.
    ```cmd
+   cd plprql
    cargo pgrx install --release
    ```
    You can target a specific PostgreSQL installation by providing the path of another `pg_config` using the `-c` flag.
@@ -143,5 +144,5 @@ cargo pgrx test pg13
 cargo pgrx test pg12
 ```
 
-# License
+## License
 Apache 2.0 License
