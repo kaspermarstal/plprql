@@ -35,7 +35,6 @@ jobs:
       - name: Test PRQL
         run: |
           cd plprql && cargo test --features ${{ matrix.pg }} --no-default-features
-          cargo test --features ${{ matrix.pg }} --no-default-features
       - name: Test PL/PRQL
         run: |
           cd plprql-tests && cargo test --features ${{ matrix.pg }} --no-default-features
