@@ -83,7 +83,7 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 
 > [!NOTE]
 >
-> PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
+> PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and your other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
 ## Getting started
 On Ubuntu, follow these steps to install PL/PRQL from source:
@@ -117,7 +117,7 @@ On Ubuntu, follow these steps to install PL/PRQL from source:
    ```
    You can target a specific PostgreSQL installation by providing the path of another `pg_config` using the `-c` flag.
    
-5. Fire up PostgreSQL and start writing functions right away!
+5. Fire up your system PostgreSQL installation and start writing functions right away! You can also try out PL/PRQL in an installation managed by `pgrx`:
    ```cmd
    $ cargo pgrx run pg16
    psql> create extension plprql;

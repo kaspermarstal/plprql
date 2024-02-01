@@ -16,8 +16,19 @@ pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
     compile(&prql, opts)
 }
 
-// Allows user to call "select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor);" and
-// subsequently fetch data using "fetch 8 from prql_cursor;". Useful for e.g. custom SQL in ORMs.
+// Allows user to call "select prql('from people | filter planet_id == 1 | sort name') as (name text, age int);".
+// THe user _must_ specify the type of the returned records with the `as (...)` clause. Useful for e.g. custom SQL in ORMs.
+extension_sql!(
+    "create function prql(str text) returns setof record as $$
+    begin
+        return query execute prql_to_sql(str);
+    end;
+    $$ language plpgsql;"
+    name = "prql"
+);
+
+// Allows user to call "select prql('from people | filter planet_id == 1 | sort name', 'prql_cursor);" and
+// subsequently fetch data with a cursor using "fetch 8 from prql_cursor;". Useful for e.g. custom SQL in ORMs.
 extension_sql!(
     "create function prql(str text, cursor_name text) returns refcursor as $$
     declare
@@ -58,7 +69,7 @@ unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> P
 }
 
 #[pg_extern]
-unsafe fn plprql_call_validator(_fid: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
+unsafe fn plprql_call_validator(_function_id: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
     // TODO
 }
 

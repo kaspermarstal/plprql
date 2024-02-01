@@ -694,28 +694,16 @@ mod tests {
         Spi::connect(|mut client| {
             _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
-            _ = client.update(
-                r#"
-                    create function prql1(str text) returns setof record as $$
-                    begin
-                        return query execute prql_to_sql(str);
-                    end;
-                    $$ language plpgsql;
-                    "#,
-                None,
-                None,
-            );
-
             let people_on_tatooine = client
                 .select(
                     r#"
                         select * from 
-                        prql1('from base.people | filter planet_id == 1 | select {name, planet_id} | sort name') 
-                        as t(name text, planet_id int);"#,
+                        prql('from base.people | filter planet_id == 1 | select {name, planet_id} | sort name') 
+                        as (name text, planet_id int);"#,
                     None,
                     None,
                 )?
-                .filter_map(|row| row.get_by_name::<&str, _>("name").expect("record has name"))
+                .filter_map(|row| row.get_by_name::<&str, _>("name").expect("record as composite type"))
                 .collect::<Vec<_>>();
 
             assert_eq!(
