@@ -845,6 +845,21 @@ mod tests {
             let player1_kills = client
                 .select(
                     r#"
+                        select * from prql('from matches | filter player == ''Player1''') 
+                        as (id int, match_id int, round int, player text, kills float, deaths float) 
+                        limit 2;
+                    "#,
+                    None,
+                    None,
+                )?
+                .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(player1_kills, vec![4f64, 1f64]);
+
+            let player1_kills = client
+                .select(
+                    r#"
                         select prql('from matches | filter player == ''Player1''', 'player1_cursor');
                         fetch 2 from player1_cursor;
                     "#,
