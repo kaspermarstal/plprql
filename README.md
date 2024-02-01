@@ -66,15 +66,19 @@ WHERE
 You can also run PRQL directly with the `prql` function which is useful for custom SQL in ORMs:
  
 ```sql
-select prql('from matches | filter player == ''Player1''', 'player1_cursor');
-
-fetch 2 from player1_cursor;
+select prql('from matches | filter player == ''Player1''') 
+as (id int, match_id int, round int, player text, kills int, deaths int) 
+limit 2;
 
  id | match_id | round | player  | kills | deaths 
 ----+----------+-------+---------+-------+--------
   1 |     1001 |     1 | Player1 |     4 |      1
   3 |     1001 |     2 | Player1 |     1 |      7
 (2 rows)
+ 
+-- Same as above, but returns cursor
+select prql('from matches | filter player == ''Player1''', 'player1_cursor');
+fetch 2 from player1_cursor;
 ```
 
 For more information on the design of the extension, see the [design document](DESIGN.md). 
@@ -83,7 +87,7 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 
 > [!NOTE]
 >
-> PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
+> PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and your other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
 ## Getting started
 On Ubuntu, follow these steps to install PL/PRQL from source:
@@ -117,7 +121,7 @@ On Ubuntu, follow these steps to install PL/PRQL from source:
    ```
    You can target a specific PostgreSQL installation by providing the path of another `pg_config` using the `-c` flag.
    
-5. Fire up PostgreSQL and start writing functions right away!
+5. Fire up your system PostgreSQL installation and start writing functions right away! You can also try out PL/PRQL in an installation managed by `pgrx`:
    ```cmd
    $ cargo pgrx run pg16
    psql> create extension plprql;

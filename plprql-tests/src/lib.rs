@@ -694,28 +694,16 @@ mod tests {
         Spi::connect(|mut client| {
             _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
 
-            _ = client.update(
-                r#"
-                    create function prql1(str text) returns setof record as $$
-                    begin
-                        return query execute prql_to_sql(str);
-                    end;
-                    $$ language plpgsql;
-                    "#,
-                None,
-                None,
-            );
-
             let people_on_tatooine = client
                 .select(
                     r#"
                         select * from 
-                        prql1('from base.people | filter planet_id == 1 | select {name, planet_id} | sort name') 
-                        as t(name text, planet_id int);"#,
+                        prql('from base.people | filter planet_id == 1 | select {name, planet_id} | sort name') 
+                        as (name text, planet_id int);"#,
                     None,
                     None,
                 )?
-                .filter_map(|row| row.get_by_name::<&str, _>("name").expect("record has name"))
+                .filter_map(|row| row.get_by_name::<&str, _>("name").expect("record as composite type"))
                 .collect::<Vec<_>>();
 
             assert_eq!(
@@ -853,6 +841,21 @@ mod tests {
             )?;
 
             assert_eq!(sql.first().get_one::<&str>(), Ok(Some("WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0")));
+
+            let player1_kills = client
+                .select(
+                    r#"
+                        select * from prql('from matches | filter player == ''Player1''') 
+                        as (id int, match_id int, round int, player text, kills float, deaths float) 
+                        limit 2;
+                    "#,
+                    None,
+                    None,
+                )?
+                .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(player1_kills, vec![4f64, 1f64]);
 
             let player1_kills = client
                 .select(
