@@ -81,5 +81,5 @@ jobs:
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
           cargo pgrx init --${{ matrix.pg }} download
       - name: Run clippy
-        run: cargo clippy --all-targets --no-default-features --features --${{ matrix.pg }} -- -D warnings
+        run: cargo clippy --all-targets --no-default-features --features ${{ matrix.pg }} -- -D warnings
 
