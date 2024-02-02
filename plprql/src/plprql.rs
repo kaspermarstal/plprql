@@ -13,7 +13,7 @@ pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
         color: false,
     };
 
-    compile(&prql, opts)
+    compile(prql, opts)
 }
 
 // Allows user to call "select prql('from people | filter planet_id == 1 | sort name') as (name text, age int);".

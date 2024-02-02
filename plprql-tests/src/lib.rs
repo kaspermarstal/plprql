@@ -562,7 +562,7 @@ mod tests {
 
             let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
 
-            assert!(matches!(jsonb, None));
+            assert!(jsonb.is_none());
 
             // Test SetOf's null handling
             _ = client.update(
@@ -652,7 +652,7 @@ mod tests {
 
             let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
 
-            assert!(matches!(jsonb, None));
+            assert!(jsonb.is_none());
 
             // Test Scalar's null handling
             _ = client.update(
