@@ -32,12 +32,13 @@ impl Function {
         })
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn arguments(&self) -> PlprqlResult<Option<Vec<(PgOid, Option<pg_sys::Datum>)>>> {
         let argument_types = self
             .pg_proc
             .proargtypes()
             .into_iter()
-            .map(|oid| PgOid::from(oid))
+            .map(PgOid::from)
             .collect::<Vec<_>>();
 
         let argument_values = unsafe {
@@ -52,10 +53,7 @@ impl Function {
         .map(Option::<pg_sys::Datum>::from)
         .collect::<Vec<Option<pg_sys::Datum>>>();
 
-        let arguments = argument_types
-            .into_iter()
-            .zip(argument_values.into_iter())
-            .collect::<Vec<_>>();
+        let arguments = argument_types.into_iter().zip(argument_values).collect::<Vec<_>>();
 
         if arguments.is_empty() {
             Ok(None)

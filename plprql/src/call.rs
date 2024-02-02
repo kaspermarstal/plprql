@@ -63,7 +63,7 @@ pub(crate) fn return_setof_iterator(
                 return None;
             }
 
-            Some(SetOfIterator::new(column.into_iter()))
+            Some(SetOfIterator::new(column))
         })
     }
 }
