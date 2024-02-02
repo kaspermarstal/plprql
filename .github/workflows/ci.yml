@@ -61,3 +61,18 @@ jobs:
           createdb -U runner runner
           psql -U runner -c "create extension plprql;"
           psql -U runner -c "select prql_to_sql('from table');"
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Run rustfmt
+        run: cargo fmt -- --check
+  rust-clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
