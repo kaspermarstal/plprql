@@ -22,7 +22,7 @@ jobs:
         pg: [ "pg12", "pg13", "pg14", "pg15", "pg16" ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install cargo-pgrx
         run: |
           cargo install --locked --version=0.11.2 cargo-pgrx --debug --force
@@ -34,7 +34,7 @@ jobs:
   Install:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install PostgreSQL headers
         run: sudo apt-get install postgresql-server-dev-14
       - name: Install cargo-pgrx
