@@ -74,5 +74,5 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --no-default-features --features pg16 -- -D warnings
 
