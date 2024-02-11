@@ -41,12 +41,11 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg14 $(which pg_config)
       - name: Run install.sh
         run: |
           cd scripts
           chmod +x install.sh
-          ./install.sh
+          ./install.sh --pg-config $(which pg_config)
       - name: Start PostgreSQL
         run: |
           sudo systemctl start postgresql.service

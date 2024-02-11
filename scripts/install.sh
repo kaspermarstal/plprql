@@ -40,7 +40,7 @@ PG_CONFIG_PATH=""
 REVISION=""
 while [[ "$#" -gt 0 ]]; do
   case $1 in
-    --pg-version) PG_CONFIG_PATH="$2"; shift ;;
+    --pg-config) PG_CONFIG_PATH="$2"; shift ;;
     --revision) REVISION="$2"; shift ;;
     *) echo "Unknown parameter: $1"; exit 1 ;;
   esac
