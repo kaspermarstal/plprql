@@ -41,7 +41,7 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg14 download
+          cargo pgrx init
       - name: Run install.sh
         run: |
           cd scripts
