@@ -2,7 +2,7 @@ use crate::call::{return_scalar, return_setof_iterator, return_table_iterator};
 use crate::err::PlprqlResult;
 use crate::fun::{Function, Return};
 use pgrx::prelude::*;
-use prql_compiler::{compile, sql::Dialect, ErrorMessages, Options, Target};
+use prqlc::{compile, sql::Dialect, ErrorMessages, Options, Target};
 
 #[pg_extern]
 pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {

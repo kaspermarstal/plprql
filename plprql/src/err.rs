@@ -1,4 +1,3 @@
-use pgrx::{pg_sys::panic::ErrorReport, PgSqlErrorCode};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -16,12 +15,12 @@ pub enum PlprqlError {
     PgrxError(#[from] pgrx::spi::Error),
 
     #[error(transparent)] // delegate Display to PRQL
-    PrqlError(#[from] prql_compiler::ErrorMessages),
+    PrqlError(#[from] prqlc::ErrorMessages),
 }
 
-impl From<PlprqlError> for ErrorReport {
+impl From<PlprqlError> for pgrx::pg_sys::panic::ErrorReport {
     fn from(value: PlprqlError) -> Self {
-        ErrorReport::new(PgSqlErrorCode::ERRCODE_FDW_ERROR, format!("{value}"), "")
+        pgrx::pg_sys::panic::ErrorReport::new(pgrx::PgSqlErrorCode::ERRCODE_FDW_ERROR, format!("{value}"), "")
     }
 }
 
