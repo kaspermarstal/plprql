@@ -66,7 +66,7 @@ fi
 PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name=="pgrx") | .version')
 
 # Check if cargo pgrx is installed
-if ! command -v cargo pgrx >/dev/null 2>&1; then
+if ! cargo --list | grep -q 'pgrx' >/dev/null 2>&1; then
   echo "cargo pgrx is not installed. Please install version $PGRX_VERSION and try again."
   echo "See https://github.com/pgcentralfoundation/pgrx"
   exit 1
@@ -75,7 +75,7 @@ fi
 # Check if the required version of pgrx is installed
 PGRX_VERSION_INSTALLED=$(cargo pgrx --version | awk '{print $2}')
 if [[ "$PGRX_VERSION_INSTALLED" != "$PGRX_VERSION" ]]; then
-  echo "Installed version of pgrx ($PGRX_VERSION_INSTALLED) does not match the project's version ($PGRX_VERSION)."
+  echo "Installed version of pgrx $PGRX_VERSION_INSTALLED does not match PL/PRQL version $PGRX_VERSION."
   echo "Please install version $PGRX_VERSION and try again."
   exit 1
 fi
