@@ -1,33 +1,55 @@
-name: PL/PRQL
+name: Package
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   # schedule:
   #   - cron: '0 7 * * MON-FRI'
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
-  # pull_request:
-  #   branches:
-  #     - main
 
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: "false"
 
 jobs:
-  distro_tests:
-    name: Package
+  Deb:
+    if: false
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
-        pg: [ "12" ] # ["12", "13", "14", "15", "16"]
-        container: [ "debian" ]
+        pg: [ "12", "13", "14", "15", "16" ]
+        os: [ "debian" ]
     steps:
       - uses: actions/checkout@v4
-      - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg }} (${{ matrix.container }})
+      - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg }} (${{ matrix.os }})
         shell: bash
         run: |
-          docker build --build-arg PG_MAJOR_VER="${{ matrix.pg }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.container }}" .
+          docker build --build-arg PG_MAJOR_VERSION="${{ matrix.pg }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.os }}" .
           docker run plprql cargo test --no-default-features --features "pg${{ matrix.pg }}"
+  Bash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL headers
+        run: sudo apt-get install postgresql-server-dev-14
+      - name: Run install.sh
+        run: |
+          cd scripts
+          chmod +x install.sh
+          ./install.sh
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          pg_isready
+          # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
+          sudo -u postgres createuser -s -d -r -w runner
+      - name: Verify install
+        run: |
+          createdb -U runner runner
+          psql -U runner -c "create extension plprql;"
+          psql -U runner -c "select prql_to_sql('from table');"
