@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Exit immediately if a command exits with a non-zero status or if an unset variable is used.
-set -eu
+set -exu
 
 # Function to check if a command exists
 command_exists() {
@@ -11,18 +11,27 @@ command_exists() {
 # Check if cargo is on the path
 if ! command_exists cargo; then
   echo "cargo is not installed. Please install it and try again."
+  echo "See https://www.rust-lang.org/tools/install"
+  exit 1
+fi
+
+# Check if cargo pgrx is installed
+if ! command_exists cargo; then
+  echo "cargo is not installed. Please install it and try again."
   exit 1
 fi
 
 # Check if git is on the path
 if ! command_exists git; then
   echo "git is not installed. Please install it and try again."
+  echo "See https://git-scm.com/downloads"
   exit 1
 fi
 
 # Check if jq is on the path
 if ! command_exists jq; then
   echo "jq is not installed. Please install it and try again."
+  echo "See https://jqlang.github.io/jq/download/"
   exit 1
 fi
 
@@ -53,22 +62,22 @@ if [[ -n "$REVISION" ]]; then
   git checkout "$REVISION"
 fi
 
-# Fetch the project version for pgrx
+# Fetch PL/PRQL version for pgrx
 PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name=="pgrx") | .version')
-echo "PL/PRQL pgrx version: ${PGRX_VERSION}"
 
-# Check if the cargo binary "pgrx" is installed
-if cargo pgrx --version &>/dev/null; then
-  PGRX_VERSION_INSTALLED=$(cargo pgrx --version | awk '{print $2}')
-  PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name=="pgrx") | .version')
+# Check if cargo pgrx is installed
+if ! command -v "$1" >/dev/null 2>&1; then
+  echo "cargo pgrx is not installed. Please install version $PGRX_VERSION and try again."
+  echo "See https://github.com/pgcentralfoundation/pgrx"
+  exit 1
+fi
 
-  if [[ "$PGRX_VERSION_INSTALLED" != "$PGRX_VERSION" ]]; then
-    echo "Installed version of pgrx ($PGRX_VERSION_INSTALLED) does not match the project's version ($PGRX_VERSION)."
-    exit 1
-  fi
-else
-  PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name=="pgrx") | .version')
-  cargo install --locked --version="$PGRX_VERSION" cargo-pgrx
+# Check if the required version of pgrx is installed
+PGRX_VERSION_INSTALLED=$(cargo pgrx --version | awk '{print $2}')
+if [[ "$PGRX_VERSION_INSTALLED" != "$PGRX_VERSION" ]]; then
+  echo "Installed version of pgrx ($PGRX_VERSION_INSTALLED) does not match the project's version ($PGRX_VERSION)."
+  echo "Please install version $PGRX_VERSION and try again."
+  exit 1
 fi
 
 # Check if pg_config path is provided and exists
@@ -86,7 +95,7 @@ fi
 # Use the provided pg_config path or fallback to the default
 PG_CONFIG_PATH="${PG_CONFIG_PATH:-$(which pg_config)}"
 
-# Install pgrx with specified options
+# Install PL/PRQL
 cd plprql
 cargo pgrx install --no-default-features --release --sudo --pg-config="${PG_CONFIG_PATH}"
 echo "PL/PRQL installed successfully."
