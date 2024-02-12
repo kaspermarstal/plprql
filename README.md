@@ -4,9 +4,15 @@
 
 PL/PRQL is a PostgreSQL extension that lets you write functions with PRQL. The extension supports PostgreSQL v12-16 on Linux and macOS.
 
-
+## What is PRQL?
+PRQL (Pipelined Relational Query Language) is an open-source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept (similar to Unix pipes) where data is transformed line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write.
 
 ## Key features
+- [Write functions with PRQL](#functions) - Useful for large analytical queries
+- [PRQL compiler](#prql-compiler) - Useful for development and debugging
+- [Inline execution](#inline-execution) - Useful for prototyping and custom queries in ORMs
+
+### Functions
 PRQL shines when your SQL queries becomes very long and complex. You can manage this complexity by porting your most impressive SQL incantations to PRQL functions, which can then be used in dashboards, business logic or other database code. For example:
 
 ```sql
@@ -32,8 +38,12 @@ select * from match_stats(1001)
  Player2 |      1.6
 (2 rows)
 ```
+This is similar to how PL/Python, PL/Javascript, and PL/Rust are implemented. 
 
-You can see the compiled SQL query with `prql_to_sql()` which is also useful for debugging:
+
+
+### PRQL Compiler
+You can use the PRQL compiler to see the SQL statements that PostgreSQL executes under the hood. You compile PRQL to SQL with the `prql_to_sql()` function:
 
 ```sql
 select prql_to_sql(...); -- statements above omitted for brevity
@@ -63,7 +73,8 @@ WHERE
 (1 row)
 ```
 
-You can also run PRQL directly with the `prql` function which is useful for custom SQL in ORMs:
+### Inline Execution
+You can run PRQL code directly with the `prql` function. This is useful for e.g. custom queries in ORMs:
  
 ```sql
 select prql('from matches | filter player == ''Player1''') 
@@ -81,6 +92,7 @@ select prql('from matches | filter player == ''Player1''', 'player1_cursor');
 fetch 2 from player1_cursor;
 ```
 
+
 For more information on the design of the extension, see the [design document](DESIGN.md). 
 
 For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), [playground](https://prql-lang.org/playground/) or [repository](https://github.com/PRQL/prql). 
@@ -89,34 +101,53 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 >
 > PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and your other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
-## Getting started
-On Ubuntu, follow these steps to install PL/PRQL from source:
+## Getting Started
+### Install From Source
+Follow either of these steps to install from source:
+
+- Download and execute the `install.sh` bash script:
+   
+   ```cmd
+   curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/scripts/install.sh | bash
+   ```
+   
+   This will install the tip of the main branch using `pg_config` on your path.
+
+- You can customize the PostgreSQL installation and/or the PL/PRQL version using the `--pg-config` and `--revision` flags:
+
+   ```cmd
+   curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/scripts/install.sh > install.sh
+   chmod +x ./install.sh
+   ./install.sh --pg-version /usr/bin/pg_config --revision 186faea
+   ```
+
+### Set Up Development Environment
+Follow these steps to set up your development environment:
 
 1. Install `cargo-pgrx`.
 
     ```cmd
-    cargo install --locked --version=0.11.2 cargo-pgrx
+    cargo install --locked --version=0.11.3 cargo-pgrx
     ```
 
-    The version of `cargo-pgrx` must match the version of `pgrx` in `Cargo.toml`. 
+    The version of `cargo-pgrx` must match the version of `pgrx` in `plprql/Cargo.toml`. 
 
 2. Initialize `pgrx` for your system.
    ```cmd
    cargo pgrx init --pg16 <PG16>
    ```
-   where `<PG16>` is the path to your system installation's `pg_config` tool (typically `/usr/bin/pg_config`). Supported versions are PostgreSQL v12-16. You can also run `cargo pgrx init` and have `pgrx` download, install, and compile PostgreSQL v12-16. These installations are managed by `pgrx` and used for development and testing. Individual `pgrx` installations can be installed using e.g. `cargo pgrx init --pg16 download`. 
+   where `<PG16>` is the path to your system installation's `pg_config` tool (typically `/usr/bin/pg_config`). Supported versions are PostgreSQL v12-16. You can also run `cargo pgrx init` and have `pgrx` download, install, and compile PostgreSQL v12-16. These installations are managed by `pgrx` and used for development and testing. Individual `pgrx`-managed installations can be installed using e.g. `cargo pgrx init --pg16 download`. 
 
 3. Clone this repository and `cd` into root directory.
 
     ```cmd
     git clone https://github.com/kaspermarstal/plprql
-    cd plprql
     ```
    
 4. Install the extension to the PostgreSQL specified by
    the `pg_config` currently on your `$PATH`.
    ```cmd
-   cd plprql
+   cd plprql/plprql
    cargo pgrx install --release
    ```
    You can target a specific PostgreSQL installation by providing the path of another `pg_config` using the `-c` flag.
@@ -138,11 +169,11 @@ On Ubuntu, follow these steps to install PL/PRQL from source:
    ```
 
 ## Running Tests 
-You can now run tests using `cargo pgrx test pg16`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate.
+You can run tests using `cargo pgrx test pg16`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate. From the root source directory:
 
 ```cmd
 cd plprql && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
-cd plprql-tests && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
+cd ../plprql-tests && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
 ```
 
 Supported PostgreSQL versions are `pg12`, `pg13`, `pg14`, `pg15`, and `pg16`.
