@@ -1,6 +1,6 @@
 # Introduction
 
-PL/PRQL implements a Procedural Language (PL) handler for the Pipelined Relation Query Language (PRQL). The purpose of this document is to describe the extension's design and foster constructive dialogue with PRQL developers, aligning design decisions and user experience.
+PL/PRQL implements a Procedural Language handler (PL) for the Pipelined Relation Query Language (PRQL). The purpose of this document is to describe the extension's design and foster constructive dialogue with PRQL developers, aligning design decisions and user experiences.
 
 ## Scope
 
@@ -31,8 +31,8 @@ Users can execute PRQL code in two ways. Defining procedural language handlers (
 The user can define PostgreSQL functions and mark them as `language plprql`. This is similar to how PL/Python, PL/Javascript, and PL/Rust are supported. For example:
 
 ```
-create function people_on_tatooine($1) returns setof base.people as $$
-    from base.people 
+create function people_on_tatooine($1) returns setof people as $$
+    from people 
     filter planet_id == 1 
     sort name
 $$ language plprql
@@ -44,27 +44,26 @@ $$ language plprql
 The user can pass PRQL code to the predefined `prql` function. For example:
 
 ```
-select prql('from base.people | filter planet_id == 1 | sort name', 'prql_cursor');
+select prql('from people | filter planet_id == 1 | sort name', 'prql_cursor');
 ```
 
 This function takes a string, a cursor name and returns a cursor. The user can subsequently fetch data using `fetch 8 from prql_cursor;` which is useful for e.g. custom SQL in ORMs.
 
-## Returning Scalars, Sets, and Tables from `plprql_call_handler`
+## Returning Scalars, Sets, and Tables from plprql_call_handler
 
-Procedural language handlers must return `datum`s. The `datum` type is PostgreSQL's fundamental type that represents a single piece of data, such that integers, strings, and more complex types can be handled in a uniform way in C code. The `plprql_call_handler` is responsible for returning scalar datums, sets of datums, or tables of datums depending on a function's return signature. Scalar function signatures can be returned directly, but functions with `table` or `setof` return signatures are set-returning functions (SRFs) that need to be handled differently.
+Procedural language handlers must return `datum`s. The `datum` type is PostgreSQL's fundamental type that represents a single piece of data, such that integers, strings, and more complex types can be handled in a uniform way in C code. The `plprql_call_handler` is responsible for returning scalar datums, sets of datums, or tables of datums depending on a function's return signature. Scalar function can return `datum`s directly, but functions with `table` or `setof` return signatures are set-returning functions (SRFs) that need to be handled differently.
 
-pgrx expects SRFs to return either a `TableIterator` or a `SetOfIterator`. Internally, these iterators use PostgreSQL's ValuePerCall concept. For ValuePerCall SRFs, PostgreSQL will repeatedly call the function with the same arguments and the SRF need to return a new row on each call until the function has no more rows to return. On each call, pgrx calls `srf_next` on the iterator which returns a `datum`.`TableIterator` and `SetOfIterator` automatically save state across calls.
+pgrx expects SRFs to return either a `TableIterator` or a `SetOfIterator`. Internally, these iterators use PostgreSQL's ValuePerCall concept. For ValuePerCall SRFs, PostgreSQL will repeatedly call the function with the same arguments. The SRF need to return a new row on each call by calling the PostgreSQL function `srf_next` with a `datum` until the function has no more rows to return, in which case it must call `pg_return_null()`. pgrx users will typically let pgrx handle this by simpling returning a `TableIterator` or `SetOfIterator` directly.
 
-PL/PRQL re-uses these iterators to take advantage of pgrx's well-tested and battle-hardened memory management capabilities across the PostgreSQL FFI boundary. Because procedural language handlers must return `datum`s, however, and `plprql_call_handler` cannot return iterators and let pgrx call `srf_next` as pgrx function usually do. Instead, the `plprql_call_handler` inspects a function's return signature and calls `srf_next` itself on the corresponding iterator.
+However, because procedural language handlers must return `datum`s, the `plprql_call_handler` cannot return `TableIterator` or `SetOfIterator` and let pgrx call `srf_next` as pgrx functions usually do. Instead, the `plprql_call_handler` inspects a function's return signature and calls `srf_next` itself on the corresponding iterator. This lets PL/PRQL re-use these iterators and take advantage of pgrx's well-tested and battle-hardened memory management across the PostgreSQL FFI boundary. 
 
-Both `TableIterator` and `SetOfIterator` take as argument a function that returns an iterator with the result. This is an `FnOnce` function that is run on the first call to `TableIterator` and `SetOfIterator` only. Since the `plprql_call_handler` lacks access to this function's return value, it cannot handle errors. Instead, the `FnOnce` function is designed to use the `report()` function provided by pgrx. `report()` works similarly to `unwrap()`. It returns either the `Ok()` value or halts execution by calling PostgreSQL's error reporting function.
+Both `TableIterator` and `SetOfIterator` take as argument a function that returns an iterator with the result. This is an `FnOnce` function that is run on the first call to `TableIterator` and `SetOfIterator` only. Since the `plprql_call_handler` lacks access to this function's return value, it cannot handle errors. Instead, the `FnOnce` function is designed to use the `report()` function provided by pgrx. `report()` works similarly to `unwrap()` and returns either the `Ok()` value or halts execution by calling PostgreSQL's error reporting function. The user will see a regular PostgreSQL error.
 
+`TableIterator` and `SetOfIterator` automatically save state across calls.
 # Testing
 
-The pgrx library provides a testing framework that allows tests to be written in Rust and executed within PostgreSQL v11-16 instances. The framework sets up isolated test environments with PL/PRQL installed for each test case, ensuring no cross-contamination of state or data.
+The pgrx library provides a testing framework that allows tests to be written in Rust and executed within PostgreSQL v11-16 instances. The framework runs each test in its own transaction that is aborted in the end, ensuring isolated test environments and no cross-contamination of state or data.
 
-Tests are in place to validate that the compiler can be called from PostgreSQL and that the SQL generated from PRQL runs successfully in PostgreSQL and that the results match the results of handwritten SQL counterparts. Tests are concerned with the extension only. Testing of the PRQL compiler or pgrx itself is handled by the libraries' own test suites.
+Tests are in place to validate that the compiler can be called from PostgreSQL and that the SQL generated from PRQL runs successfully in PostgreSQL. In addition, the extension tests that results match the results of handwritten SQL counterparts, that return modes (Scalar, SetOfIterator, and TableIterator) and supported types are handled correctly (including NULL values), and that the README examples are valid. 
 
-# Roadmap
-
-- Support named variables.
+Tests are concerned with the extension only. Testing of the PRQL compiler or pgrx itself is handled by the libraries' own test suites.
