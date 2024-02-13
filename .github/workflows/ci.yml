@@ -19,7 +19,7 @@ jobs:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-        pg: [ "pg12", "pg13", "pg14", "pg15", "pg16" ]
+        pg: [ "12", "13", "14", "15", "16" ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -27,11 +27,11 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --${{ matrix.pg }} download
+          cargo pgrx init --pg${{ matrix.pg }} download
       - name: Run unit tests
-        run: cd plprql && echo "\q" | cargo pgrx run ${{ matrix.pg }} && cargo test --no-default-features --features ${{ matrix.pg }}
+        run: cd plprql && echo "\q" | cargo pgrx run pg${{ matrix.pg }} && cargo test --no-default-features --features pg${{ matrix.pg }}
       - name: Run integration tests
-        run: cd plprql && echo "\q" | cargo pgrx run ${{ matrix.pg }} && cd ../plprql-tests && cargo test --no-default-features --features ${{ matrix.pg }}
+        run: cd plprql && echo "\q" | cargo pgrx run pg${{ matrix.pg }} && cd ../plprql-tests && cargo test --no-default-features --features pg${{ matrix.pg }}
   Install:
     runs-on: ubuntu-latest
     steps:
@@ -77,7 +77,7 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --${{ matrix.pg }} download
+          cargo pgrx init --pg${{ matrix.pg }} download
       - name: Run clippy
-        run: cargo clippy --all-targets --no-default-features --features ${{ matrix.pg }} -- -D warnings
+        run: cargo clippy --all-targets --no-default-features --features pg${{ matrix.pg }} -- -D warnings
 

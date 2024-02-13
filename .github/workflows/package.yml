@@ -17,20 +17,39 @@ env:
 
 jobs:
   Deb:
-    if: false
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         pg: [ "12", "13", "14", "15", "16" ]
-        os: [ "debian" ]
+        os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
     steps:
       - uses: actions/checkout@v4
-      - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg }} (${{ matrix.os }})
-        shell: bash
+      - name: Package PL/PRQL .deb for PostgreSQL ${{ matrix.pg }} on ${{ matrix.os.distribution }} ${{ matrix.os.release }}
         run: |
-          docker build --build-arg PG_MAJOR_VERSION="${{ matrix.pg }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.os }}" .
-          docker run plprql cargo test --no-default-features --features "pg${{ matrix.pg }}"
+          docker build \
+          --build-arg PG_MAJOR_VERSION="$PG_MAJOR_VERSION" \
+          --build-arg PLPRQL_VERSION="$PLPRQL_VERSION" \
+          -t "plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
+          -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
+          .
+      - name: Verify Install
+        run: |
+          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} dpkg -i /out/plprql*.deb
+          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} sudo systemctl start postgresql.service
+          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} pg_isready
+          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} createdb -U postgres postgres
+          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} psql -U postgres -c "create extension plprql;"
+          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} psql -U runner -c "select prql_to_sql('from table');"
+      - name: Extract .deb
+        run: |
+          container_id=$(docker create plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
+          docker cp $container_id:/out /home/runner
+          docker rm -v $container_id
+      - name: Upload .deb
+        uses: softprops/action-gh-release@v1
+        with:
+          files: /home/runner/out/plprql*.deb
   Bash:
     runs-on: ubuntu-latest
     steps:
