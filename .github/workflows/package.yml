@@ -17,6 +17,7 @@ env:
 
 jobs:
   Deb:
+    # if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
@@ -27,6 +28,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Package PL/PRQL .deb for PostgreSQL ${{ matrix.pg }} on ${{ matrix.os.distribution }} ${{ matrix.os.release }}
         run: |
+          git checkout c8afddec17d26476cdcba2d90937596a7d8aea91
+          
           docker build \
           --build-arg PG_MAJOR_VERSION=${{ matrix.pg }} \
           --build-arg PLPRQL_VERSION=c8afddec17d26476cdcba2d90937596a7d8aea91 \

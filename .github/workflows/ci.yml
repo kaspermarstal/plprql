@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pg: [ "pg16" ]
+        pg: [ "16" ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

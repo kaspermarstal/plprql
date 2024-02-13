@@ -23,10 +23,9 @@ RUN apt-get install -y curl pkg-config
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Prepare source code
+# Prepare source directory
 COPY ./ /src
 WORKDIR /src/plprql
-RUN git checkout ${PLPRQL_VERSION}
 
 # Install pgrx using the version in Cargo.toml
 RUN PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version') && \
