@@ -29,7 +29,7 @@ jobs:
         run: |
           docker build \
           --build-arg PG_MAJOR_VERSION=${{ matrix.pg }} \
-          --build-arg PLPRQL_VERSION=c8afdde \
+          --build-arg PLPRQL_VERSION=c8afddec17d26476cdcba2d90937596a7d8aea91 \
           -t "plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
           -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
           .
