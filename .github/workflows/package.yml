@@ -28,8 +28,8 @@ jobs:
       - name: Package PL/PRQL .deb for PostgreSQL ${{ matrix.pg }} on ${{ matrix.os.distribution }} ${{ matrix.os.release }}
         run: |
           docker build \
-          --build-arg PG_MAJOR_VERSION="$PG_MAJOR_VERSION" \
-          --build-arg PLPRQL_VERSION="$PLPRQL_VERSION" \
+          --build-arg PG_MAJOR_VERSION=${{ matrix.pg }} \
+          --build-arg PLPRQL_VERSION=c8afdde \
           -t "plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
           -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
           .
