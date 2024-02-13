@@ -34,18 +34,16 @@ jobs:
           -t "plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
           -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
           .
-      - name: Verify Install
+      - name: Verify Install and Extract .deb
         run: |
-          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} dpkg -i /out/plprql*.deb
-          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} sudo systemctl start postgresql.service
-          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} pg_isready
-          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} createdb -U postgres postgres
-          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} psql -U postgres -c "create extension plprql;"
-          docker run plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }} psql -U runner -c "select prql_to_sql('from table');"
-      - name: Extract .deb
-        run: |
-          container_id=$(docker create plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
-          docker cp $container_id:/out /home/runner
+          container=$(docker create plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
+          docker run $container dpkg -i /out/plprql*.deb
+          docker run $container sudo systemctl start postgresql.service
+          docker run $container pg_isready
+          docker run $container createdb -U postgres postgres
+          docker run $container psql -U postgres -c "create extension plprql;"
+          docker run $container psql -U runner -c "select prql_to_sql('from table');"
+          docker cp $container:/out /home/runner
           docker rm -v $container_id
       - name: Upload .deb
         uses: softprops/action-gh-release@v1

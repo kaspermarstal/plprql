@@ -50,7 +50,7 @@ fi' >> /tmp/preinst
 
 # Package everything up based on whatever's in RELEASE_DIR, and send the resulting
 # .deb file to the /out directory
-RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-debian-pg${PG_MAJOR_VERSION}-$(dpkg --print-architecture).deb" && \
+RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian-$(dpkg --print-architecture).deb" && \
     cd ${RELEASE_DIR} && fpm \
     -s dir \
     -t deb \
