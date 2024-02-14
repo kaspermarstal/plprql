@@ -7,8 +7,6 @@ on:
   pull_request:
     branches:
       - main
-  # schedule:
-  #   - cron: '0 7 * * MON-FRI'
   workflow_dispatch:
 
 env:
@@ -45,7 +43,7 @@ jobs:
           CONTAINER_ID=$(docker create postgres:${{ matrix.pg }}-${{ matrix.os.release }})
 
           # Install PL/PRQL
-          docker cp /home/runner $CONTAINER:/tmp
+          docker cp /home/runner $CONTAINER_ID:/tmp
           docker run $CONTAINER dpkg -i /tmp/out/plprql*.deb
 
           # Verify install
