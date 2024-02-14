@@ -14,9 +14,10 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: "false"
+  PLPRQL_VERSION: c8afddec17d26476cdcba2d90937596a7d8aea91
 
 jobs:
-  Deb:
+  Debian:
     # if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     strategy:
@@ -30,21 +31,31 @@ jobs:
         run: |
           docker build \
           --build-arg PG_MAJOR_VERSION=${{ matrix.pg }} \
-          --build-arg PLPRQL_VERSION=c8afddec17d26476cdcba2d90937596a7d8aea91 \
-          -t "plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
+          --build-arg PLPRQL_VERSION=$PLPRQL_VERSION \
+          -t "plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
           -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
           .
-      - name: Verify Install and Extract .deb
+      - name: Extract .deb
         run: |
-          container=$(docker create plprql-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
-          docker run $container dpkg -i /out/plprql*.deb
-          docker run $container sudo systemctl start postgresql.service
-          docker run $container pg_isready
-          docker run $container createdb -U postgres postgres
-          docker run $container psql -U postgres -c "create extension plprql;"
-          docker run $container psql -U runner -c "select prql_to_sql('from table');"
-          docker cp $container:/out /home/runner
-          docker rm -v $container_id
+          CONTAINER_ID=$(docker create plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
+          docker cp $CONTAINER_ID:/out /home/runner
+          docker rm -v $CONTAINER_ID
+      - name: Verify Install
+        run: |
+          CONTAINER_ID=$(docker create postgres:${{ matrix.pg }}-${{ matrix.os.release }})
+
+          # Install PL/PRQL
+          docker cp /home/runner $CONTAINER:/tmp
+          docker run $CONTAINER dpkg -i /tmp/out/plprql*.deb
+
+          # Verify install
+          docker run $CONTAINER_ID sudo systemctl start postgresql.service
+          docker run $CONTAINER_ID pg_isready
+          docker run $CONTAINER_ID createdb -U postgres postgres
+          docker run $CONTAINER_ID psql -U postgres -c "create extension plprql;"
+          docker run $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
+
+          docker rm -v $CONTAINER_ID
       - name: Upload .deb
         uses: softprops/action-gh-release@v1
         with:
