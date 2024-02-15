@@ -41,7 +41,7 @@ ENV RELEASE_DIR /src/target/release/plprql-pg${PG_MAJOR_VERSION}
 RUN mkdir /artifacts && chmod 777 /artifacts
 
 # Create the --before-install script
-RUN echo $'#!bin/bash\n\
+RUN echo $'#!/bin/bash\n\
 \n\
 if ! id -u postgres 2>&1 > /dev/null; then\n\
     echo "[!] User 'postgres' does not exist. Have the official Postgres packages been installed yet?"\n\
@@ -58,7 +58,6 @@ RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian
     -s dir \
     -t deb \
     -n plprql \
-    -d "postgresql-${PG_MAJOR_VERSION}" \
     -m 'Kasper Marstal, kaspermarstal@gmail.com' \
     --description 'PL/PRQL is a PostgreSQL extension that lets you write functions with PRQL.' \
     -v ${PLPRQL_VERSION} \
