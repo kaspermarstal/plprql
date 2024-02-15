@@ -42,9 +42,9 @@ jobs:
         run: |
           CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust postgres:12-bullseye)
           docker cp /home/runner/artifacts $CONTAINER_ID:/tmp/artifacts
-          docker exec -it $CONTAINER_ID dpkg -i /tmp/artifacts/plprql*.deb
-          docker exec -it $CONTAINER_ID psql -U postgres -c "create extension plprql;"
-          docker exec -it $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
+          docker exec $CONTAINER_ID dpkg -i /tmp/artifacts/plprql*.deb
+          docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
+          docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
           docker stop $CONTAINER_ID
           docker rm -v $CONTAINER_ID
       - name: Upload .deb
