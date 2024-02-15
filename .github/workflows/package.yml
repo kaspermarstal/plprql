@@ -36,28 +36,21 @@ jobs:
       - name: Extract .deb
         run: |
           CONTAINER_ID=$(docker create plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
-          docker cp $CONTAINER_ID:/out /home/runner
+          docker cp $CONTAINER_ID:/artifacts /home/runner
           docker rm -v $CONTAINER_ID
       - name: Verify Install
         run: |
-          CONTAINER_ID=$(docker create postgres:${{ matrix.pg }}-${{ matrix.os.release }})
-
-          # Install PL/PRQL
-          docker cp /home/runner $CONTAINER_ID:/tmp
-          docker run $CONTAINER dpkg -i /tmp/out/plprql*.deb
-
-          # Verify install
-          docker run $CONTAINER_ID sudo systemctl start postgresql.service
-          docker run $CONTAINER_ID pg_isready
-          docker run $CONTAINER_ID createdb -U postgres postgres
-          docker run $CONTAINER_ID psql -U postgres -c "create extension plprql;"
-          docker run $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
-
+          CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust postgres:12-bullseye)
+          docker cp /home/runner/artifacts $CONTAINER_ID:/tmp/artifacts
+          docker exec -it $CONTAINER_ID dpkg -i /tmp/artifacts/plprql*.deb
+          docker exec -it $CONTAINER_ID psql -U postgres -c "create extension plprql;"
+          docker exec -it $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
+          docker stop $CONTAINER_ID
           docker rm -v $CONTAINER_ID
       - name: Upload .deb
         uses: softprops/action-gh-release@v1
         with:
-          files: /home/runner/out/plprql*.deb
+          files: /home/runner/artifacts/plprql*.deb
   Bash:
     runs-on: ubuntu-latest
     steps:

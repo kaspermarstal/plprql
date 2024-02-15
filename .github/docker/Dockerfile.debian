@@ -66,10 +66,10 @@ RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian
     --category 'Databases' \
     --deb-no-default-config-files \
     --before-install /tmp/preinst \
-    -p /out/$DEB_FILENAME \
+    -p /artifacts/$DEB_FILENAME \
     --deb-user postgres \
     --deb-group postgres \
     -a native \
     .
 
-RUN ls /out
+RUN ls /artifacts
