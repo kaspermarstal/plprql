@@ -12,7 +12,6 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: "false"
-  PLPRQL_VERSION: c8afddec17d26476cdcba2d90937596a7d8aea91
 
 jobs:
   Debian:
@@ -43,7 +42,7 @@ jobs:
             PLPRQL_VERSION="${LATEST_TAG#v}-$COMMIT_SHORT_SHA"
           fi
           
-          echo "PLPRQL_VERSION=PLPRQL_VERSION" >> $GITHUB_ENV
+          echo "PLPRQL_VERSION=$PLPRQL_VERSION" >> $GITHUB_ENV
           echo "Version is $PLPRQL_VERSION"
       - name: Package PL/PRQL .deb for PostgreSQL ${{ matrix.pg }} on ${{ matrix.os.distribution }} ${{ matrix.os.release }}
         run: |
