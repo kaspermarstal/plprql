@@ -40,11 +40,19 @@ ENV RELEASE_DIR /src/target/release/plprql-pg${PG_MAJOR_VERSION}
 # Create the directory for the outgoing .deb package
 RUN mkdir /artifacts && chmod 777 /artifacts
 
+# Create the --before-install script
+RUN echo $'#!bin/bash\n\
+\n\
+if ! id -u postgres 2>&1 > /dev/null; then\n\
+    echo "[!] User 'postgres' does not exist. Have the official Postgres packages been installed yet?"\n\
+    exit 1\n\
+fi' >> /tmp/before-install.sh
+
 # Package everything up based on whatever's in RELEASE_DIR, and send the resulting
 # .deb file to the /artifact directory. We don't check if PostgreSQL is installed
-# (e.g. via -d "postgresql-${PG_MAJOR_VERSION}" or a --before-install script) because it could have been compiled
-# from source or installed in a myriad of other ways. We simply let the install fail
-# hard if the required directories do not exist.
+# (e.g. via -d "postgresql-${PG_MAJOR_VERSION}") because it could have been compiled
+# from source or installed in a myriad of other ways. We simply check for the postgres
+# user and let the install fail and hard if the required directories do not exist.
 RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian-$(dpkg --print-architecture).deb" && \
     cd ${RELEASE_DIR} && fpm \
     -s dir \
@@ -58,6 +66,7 @@ RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian
     --license 'Apache 2.0 License' \
     --category 'Databases' \
     --deb-no-default-config-files \
+    --before-install /tmp/before-install.sh \
     -p /artifacts/$DEB_FILENAME \
     --deb-user postgres \
     --deb-group postgres \
