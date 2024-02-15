@@ -64,8 +64,22 @@ jobs:
           ls -R /home/runner/artifacts
           docker exec $CONTAINER_ID ls -R /tmp
           docker exec $CONTAINER_ID bash -c 'dpkg -i /tmp/artifacts/plprql*.deb'
-          docker exec $CONTAINER_ID bash -c 'psql -U postgres -c "create extension plprql;"'
-          docker exec $CONTAINER_ID bash -c 'psql -U postgres -c "select prql_to_sql('from table');"'
+          
+          max_tries=30
+          count=0
+          
+          until docker exec $CONTAINER_ID pg_isready -U postgres; do
+            count=$((count+1))
+            echo "Waiting for PostgreSQL to start... Attempt $count of $max_tries"
+            sleep 1
+              if [ $count -ge $max_tries ]; then
+              echo "PostgreSQL failed to start"
+              exit 1
+            fi
+          done
+          
+          docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
+          docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
           docker stop $CONTAINER_ID
           docker rm -v $CONTAINER_ID
       - name: Upload .deb
