@@ -41,7 +41,7 @@ jobs:
       - name: Verify Install
         run: |
           CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust postgres:12-bullseye)
-          docker cp /home/runner/artifacts $CONTAINER_ID:/tmp/artifacts
+          docker cp /home/runner/artifacts $CONTAINER_ID:/tmp
           docker exec $CONTAINER_ID dpkg -i /tmp/artifacts/plprql*.deb
           docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
           docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
