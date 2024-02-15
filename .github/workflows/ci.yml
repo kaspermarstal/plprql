@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, macos-latest ]
         pg: [ "pg12", "pg13", "pg14", "pg15", "pg16" ]
     runs-on: ${{ matrix.os }}
     steps:
