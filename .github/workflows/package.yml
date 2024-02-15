@@ -24,6 +24,8 @@ jobs:
         os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensure all history for tags and branches is fetched
       - name: Extract PL/PRQL version
         run: |
           # Find the latest tag
