@@ -41,7 +41,7 @@ ENV RELEASE_DIR /src/target/release/plprql-pg${PG_MAJOR_VERSION}
 RUN mkdir /artifacts && chmod 777 /artifacts
 
 # Create a Debian preinst script that will run before the installation of PL/PRQL.
-RUN echo $'#!/usr/bin/env bash\n\
+RUN echo $'#!bin/bash\n\
 \n\
 if ! id -u postgres 2>&1 > /dev/null; then\n\
     echo "[!] User 'postgres' does not exist. Have the official Postgres packages been installed yet?"\n\
