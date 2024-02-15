@@ -55,7 +55,6 @@ RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian
     -s dir \
     -t deb \
     -n plprql \
-    --deb-pre-depends "postgresql-${PG_MAJOR_VERSION}" \
     -d "postgresql-${PG_MAJOR_VERSION}" \
     -m 'Kasper Marstal, kaspermarstal@gmail.com' \
     --description 'PL/PRQL is a PostgreSQL extension that lets you write functions with PRQL.' \
