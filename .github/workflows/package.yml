@@ -64,6 +64,7 @@ jobs:
           ls -R /home/runner/artifacts
           docker exec $CONTAINER_ID ls -R /tmp
           docker exec $CONTAINER_ID bash -c 'dpkg -i /tmp/artifacts/plprql*.deb'
+          docker exec $CONTAINER_ID pg_ready
           docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
           docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
           docker stop $CONTAINER_ID
