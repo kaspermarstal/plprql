@@ -16,7 +16,6 @@ env:
 
 jobs:
   Debian:
-    # if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
@@ -25,6 +24,25 @@ jobs:
         os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
     steps:
       - uses: actions/checkout@v4
+      - name: Extract PL/PRQL version
+        run: |
+          # Find the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          
+          # Get the short SHA of the current commit
+          COMMIT_SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          
+          # Determine if the latest push is exactly the latest tag
+          if [[ "refs/tags/$LATEST_TAG" == "$GITHUB_REF" ]]; then
+            # If the push is for the latest tag, use the tag as the version
+            PLPRQL_VERSION=${LATEST_TAG#v}
+          else
+            # If the push is not for a tag, append the current commit's short SHA to the latest tag
+            PLPRQL_VERSION="${LATEST_TAG#v}-$COMMIT_SHORT_SHA"
+          fi
+          
+          echo "PLPRQL_VERSION=PLPRQL_VERSION" >> $GITHUB_ENV
+          echo "Version is $PLPRQL_VERSION"
       - name: Package PL/PRQL .deb for PostgreSQL ${{ matrix.pg }} on ${{ matrix.os.distribution }} ${{ matrix.os.release }}
         run: |
           docker build \
