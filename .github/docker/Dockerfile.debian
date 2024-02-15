@@ -58,7 +58,6 @@ RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian
     --license 'Apache 2.0 License' \
     --category 'Databases' \
     --deb-no-default-config-files \
-    --before-install /tmp/preinst \
     -p /artifacts/$DEB_FILENAME \
     --deb-user postgres \
     --deb-group postgres \

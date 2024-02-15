@@ -83,6 +83,7 @@ jobs:
           docker stop $CONTAINER_ID
           docker rm -v $CONTAINER_ID
       - name: Upload .deb
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           files: /home/runner/artifacts/plprql*.deb
