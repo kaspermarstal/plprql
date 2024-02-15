@@ -38,7 +38,7 @@ RUN cargo pgrx package --features pg${PG_MAJOR_VERSION}
 ENV RELEASE_DIR /src/target/release/plprql-pg${PG_MAJOR_VERSION}
 
 # Create the directory for the outgoing .deb package
-RUN mkdir /out && chmod 777 /out
+RUN mkdir /artifacts && chmod 777 /artifacts
 
 # Create a Debian preinst script that will run before the installation of PL/PRQL.
 RUN echo $'#!/usr/bin/env bash\n\
