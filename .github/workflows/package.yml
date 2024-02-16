@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 env:
@@ -18,6 +20,8 @@ jobs:
       matrix:
         pg: [ "12", "13", "14", "15", "16" ]
         os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,6 +50,7 @@ jobs:
           docker build \
           --build-arg PG_MAJOR_VERSION=${{ matrix.pg }} \
           --build-arg PLPRQL_VERSION=$PLPRQL_VERSION \
+          --build-arg DEBIAN_RELEASE=${{ matrix.os.release }} \
           -t "plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
           -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
           .

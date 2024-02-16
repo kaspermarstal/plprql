@@ -1,4 +1,5 @@
-[![Linux](https://github.com/kaspermarstal/plprql/actions/workflows/ci.yml/badge.svg)](https://github.com/kaspermarstal/plprql/actions/workflows/test.yml)
+[![Linux](https://github.com/kaspermarstal/plprql/actions/workflows/ci.yml/badge.svg)](https://github.com/kaspermarstal/plprql/actions/workflows/ci.yml) [![Linux](https://github.com/kaspermarstal/plprql/actions/workflows/package.yml/badge.svg)](https://github.com/kaspermarstal/plprql/actions/workflows/package.yml)
+
 
 # PRQL in PostgreSQL!
 

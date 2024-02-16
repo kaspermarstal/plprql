@@ -1,12 +1,16 @@
-FROM debian:bullseye
+ARG DEBIAN_RELEASE
+
+FROM debian:${DEBIAN_RELEASE}
 
 ARG PG_MAJOR_VERSION
 ARG PLPRQL_VERSION
+ARG DEBIAN_RELEASE
 
 # Install PostgreSQL
 RUN apt-get update
 RUN apt-get install -y wget gnupg
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ ${DEBIAN_RELEASE}-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN file="$(cat /etc/apt/sources.list.d/pgdg.list)" && echo $file
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt-get update
 RUN apt-get install -y build-essential postgresql-server-dev-${PG_MAJOR_VERSION} postgresql-${PG_MAJOR_VERSION}
@@ -53,7 +57,7 @@ fi' >> /tmp/before-install.sh
 # (e.g. via -d "postgresql-${PG_MAJOR_VERSION}") because it could have been compiled
 # from source or installed in a myriad of other ways. We simply check for the postgres
 # user and let the install fail and hard if the required directories do not exist.
-RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian-$(dpkg --print-architecture).deb" && \
+RUN DEB_FILENAME="plprql-${PLPRQL_VERSION}-postgresql-${PG_MAJOR_VERSION}-debian-${DEBIAN_RELEASE}-$(dpkg --print-architecture).deb" && \
     cd ${RELEASE_DIR} && fpm \
     -s dir \
     -t deb \
