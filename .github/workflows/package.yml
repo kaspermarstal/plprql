@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  # schedule:
-  #   - cron: '0 7 * * MON-FRI'
   workflow_dispatch:
 
 env:
@@ -16,21 +11,79 @@ env:
   CARGO_INCREMENTAL: "false"
 
 jobs:
-  Deb:
-    if: false
+  Debian:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         pg: [ "12", "13", "14", "15", "16" ]
-        os: [ "debian" ]
+        os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
     steps:
       - uses: actions/checkout@v4
-      - name: Package PL/PRQL for PostgreSQL ${{ matrix.pg }} (${{ matrix.os }})
-        shell: bash
+        with:
+          fetch-depth: 0 # Ensure all history for tags and branches is fetched
+      - name: Extract PL/PRQL version
         run: |
-          docker build --build-arg PG_MAJOR_VERSION="${{ matrix.pg }}" -t plprql -f ".github/docker/Dockerfile.${{ matrix.os }}" .
-          docker run plprql cargo test --no-default-features --features "pg${{ matrix.pg }}"
+          # Find the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          
+          # Get the short SHA of the current commit
+          COMMIT_SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          
+          # Determine if the latest push is exactly the latest tag
+          if [[ "refs/tags/$LATEST_TAG" == "$GITHUB_REF" ]]; then
+            # If the push is for the latest tag, use the tag as the version
+            PLPRQL_VERSION=${LATEST_TAG#v}
+          else
+            # If the push is not for a tag, append the current commit's short SHA to the latest tag
+            PLPRQL_VERSION="${LATEST_TAG#v}-$COMMIT_SHORT_SHA"
+          fi
+          
+          echo "PLPRQL_VERSION=$PLPRQL_VERSION" >> $GITHUB_ENV
+          echo "Version is $PLPRQL_VERSION"
+      - name: Package PL/PRQL .deb for PostgreSQL ${{ matrix.pg }} on ${{ matrix.os.distribution }} ${{ matrix.os.release }}
+        run: |
+          docker build \
+          --build-arg PG_MAJOR_VERSION=${{ matrix.pg }} \
+          --build-arg PLPRQL_VERSION=$PLPRQL_VERSION \
+          -t "plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
+          -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
+          .
+      - name: Extract .deb
+        run: |
+          CONTAINER_ID=$(docker create plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
+          docker cp $CONTAINER_ID:/artifacts /home/runner
+          docker rm -v $CONTAINER_ID
+      - name: Verify Install
+        run: |
+          CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust postgres:${{ matrix.pg }}-${{ matrix.os.release }})
+          docker cp /home/runner/artifacts $CONTAINER_ID:/tmp
+          ls -R /home/runner/artifacts
+          docker exec $CONTAINER_ID ls -R /tmp
+          docker exec $CONTAINER_ID bash -c 'dpkg -i /tmp/artifacts/plprql*.deb'
+          
+          max_tries=30
+          count=0
+          
+          until docker exec $CONTAINER_ID pg_isready -U postgres; do
+            count=$((count+1))
+            echo "Waiting for PostgreSQL to start (attempt $count of $max_tries)"
+            sleep 1
+              if [ $count -ge $max_tries ]; then
+              echo "PostgreSQL failed to start"
+              exit 1
+            fi
+          done
+          
+          docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
+          docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
+          docker stop $CONTAINER_ID
+          docker rm -v $CONTAINER_ID
+      - name: Upload .deb
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: /home/runner/artifacts/plprql*.deb
   Bash:
     runs-on: ubuntu-latest
     steps:
