@@ -67,7 +67,7 @@ jobs:
           
           until docker exec $CONTAINER_ID pg_isready -U postgres; do
             count=$((count+1))
-            echo "Waiting for PostgreSQL to start... Attempt $count of $max_tries"
+            echo "Waiting for PostgreSQL to start (attempt $count of $max_tries)"
             sleep 1
               if [ $count -ge $max_tries ]; then
               echo "PostgreSQL failed to start"
