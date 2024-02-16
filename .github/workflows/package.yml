@@ -59,7 +59,7 @@ jobs:
           docker rm -v $CONTAINER_ID
       - name: Verify Install
         run: |
-          CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust postgres:12-bullseye)
+          CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust postgres:${{ matrix.pg }}-${{ matrix.os.release }})
           docker cp /home/runner/artifacts $CONTAINER_ID:/tmp
           ls -R /home/runner/artifacts
           docker exec $CONTAINER_ID ls -R /tmp
