@@ -1,6 +1,6 @@
 # Introduction
 
-PL/PRQL implements a Procedural Language handler (PL) for the Pipelined Relation Query Language (PRQL). The purpose of this document is to describe the extension's design and foster constructive dialogue with PRQL developers, aligning design decisions and user experiences.
+PL/PRQL implements a Procedural Language handler (PL) for the Pipelined Relation Query Language ([PRQL](https://prql-lang.org)). The purpose of this document is to describe the extension's design and foster constructive dialogue with PRQL developers, aligning design decisions and user experiences.
 
 ## Scope
 
