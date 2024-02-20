@@ -1,4 +1,4 @@
-use crate::call::{return_scalar, return_setof_iterator, return_table_iterator};
+use crate::call::{call_scalar, call_setof_iterator, call_table_iterator};
 use crate::err::PlprqlResult;
 use crate::fun::{Function, Return};
 use pgrx::prelude::*;
@@ -60,9 +60,9 @@ unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> P
     let function = Function::from_call_info(function_call_info)?;
 
     let datum = match function.return_mode() {
-        Return::Table => TableIterator::srf_next(function.call_info, return_table_iterator(&function)),
-        Return::SetOf => SetOfIterator::srf_next(function.call_info, return_setof_iterator(&function)),
-        Return::Scalar => return_scalar(&function),
+        Return::Table => TableIterator::srf_next(function.call_info, call_table_iterator(&function)),
+        Return::SetOf => SetOfIterator::srf_next(function.call_info, call_setof_iterator(&function)),
+        Return::Scalar => call_scalar(&function),
     };
 
     Ok(datum)

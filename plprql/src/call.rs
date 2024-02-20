@@ -6,7 +6,7 @@ use pgrx::pg_return_null;
 use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
 
-pub(crate) fn return_table_iterator(function: &Function) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
+pub(crate) fn call_table_iterator(function: &Function) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
     || -> Option<TableIterator<'static, Row>> {
         let sql = prql_to_sql(&function.body()).report();
         let arguments = function.arguments().report();
@@ -38,7 +38,7 @@ pub(crate) fn return_table_iterator(function: &Function) -> impl FnOnce() -> Opt
     }
 }
 
-pub(crate) fn return_setof_iterator(
+pub(crate) fn call_setof_iterator(
     function: &Function,
 ) -> impl FnOnce() -> Option<SetOfIterator<'static, Option<AnyDatum>>> + '_ {
     || -> Option<SetOfIterator<'static, Option<AnyDatum>>> {
@@ -68,7 +68,7 @@ pub(crate) fn return_setof_iterator(
     }
 }
 
-pub(crate) fn return_scalar(function: &Function) -> pg_sys::Datum {
+pub(crate) fn call_scalar(function: &Function) -> pg_sys::Datum {
     let sql = prql_to_sql(&function.body()).report();
     let arguments = function.arguments().report();
 
