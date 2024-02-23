@@ -7,7 +7,6 @@ mod call;
 mod err;
 mod fun;
 pub mod plprql;
-mod row;
 
 /// This module is required by `cargo pgrx tests` invocations.
 /// It must be visible at the root of your extension crate.
