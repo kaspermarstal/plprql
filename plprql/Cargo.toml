@@ -2,6 +2,14 @@
 name = "plprql"
 version = "0.1.0"
 edition = "2021"
+description = "A procedural language PostgreSQL extension for PRQL"
+authors = ["Kasper Marstal <kaspermarstal@gmail.com>"]
+homepage = "https://github.com/kaspermarstal/plprql"
+repository = "https://github.com/kaspermarstal/plprql"
+readme = "../README.md"
+categories = ["database"]
+keywords = ["sql", "prql", "postgresql", "extension", "pgrx"]
+license = "Apache-2.0"
 
 [lib]
 crate-type = ["cdylib"]
