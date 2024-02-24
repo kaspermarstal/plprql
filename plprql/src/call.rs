@@ -1,10 +1,36 @@
 use crate::anydatum::AnyDatum;
 use crate::fun::Function;
 use crate::plprql::prql_to_sql;
-use crate::row::Row;
 use pgrx::pg_return_null;
 use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
+use pgrx::{pg_sys, IntoDatum, IntoHeapTuple};
+
+pub struct Row {
+    pub datums: Vec<Option<AnyDatum>>,
+}
+
+impl IntoHeapTuple for Row {
+    unsafe fn into_heap_tuple(self, tupdesc: *mut pg_sys::TupleDescData) -> *mut pg_sys::HeapTupleData {
+        let mut datums = Vec::with_capacity(self.datums.len());
+        let mut is_nulls = Vec::with_capacity(self.datums.len());
+
+        for any_datum in self.datums.into_iter() {
+            match any_datum.into_datum() {
+                Some(datum) => {
+                    datums.push(datum);
+                    is_nulls.push(false);
+                }
+                None => {
+                    datums.push(pg_sys::Datum::from(0));
+                    is_nulls.push(true);
+                }
+            };
+        }
+
+        unsafe { pg_sys::heap_form_tuple(tupdesc, datums.as_mut_ptr(), is_nulls.as_mut_ptr()) }
+    }
+}
 
 pub(crate) fn call_table_iterator(function: &Function) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
     || -> Option<TableIterator<'static, Row>> {
