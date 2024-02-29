@@ -32,7 +32,6 @@ fi
 # Check if a C compiler is on the path
 if ! command_exists cc; then
   echo "cc is not installed. Please install a C compiler and try again."
-  echo "See https://jqlang.github.io/jq/download/"
   exit 1
 fi
 

@@ -37,7 +37,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install PostgreSQL headers
-        run: sudo apt-get install postgresql-server-dev-14
+        run: |
+          sudo apt-get update
+          sudo apt-get install postgresql-server-dev-14
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
