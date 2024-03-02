@@ -15,12 +15,6 @@ if ! command_exists cargo; then
   exit 1
 fi
 
-# Check if cargo pgrx is installed
-if ! command_exists cargo; then
-  echo "cargo is not installed. Please install it and try again."
-  exit 1
-fi
-
 # Check if git is on the path
 if ! command_exists git; then
   echo "git is not installed. Please install it and try again."
@@ -32,6 +26,12 @@ fi
 if ! command_exists jq; then
   echo "jq is not installed. Please install it and try again."
   echo "See https://jqlang.github.io/jq/download/"
+  exit 1
+fi
+
+# Check if a C compiler is on the path
+if ! command_exists cc; then
+  echo "cc is not installed. Please install a C compiler and try again."
   exit 1
 fi
 
