@@ -56,20 +56,22 @@ extension_sql!(
     returns language_handler
     language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
-unsafe fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
+fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
     let function = Function::from_call_info(function_call_info)?;
 
-    let datum = match function.return_mode() {
-        Return::Table => TableIterator::srf_next(function.call_info, call_table_iterator(&function)),
-        Return::SetOf => SetOfIterator::srf_next(function.call_info, call_setof_iterator(&function)),
-        Return::Scalar => call_scalar(&function),
+    let datum = unsafe {
+        match function.return_mode() {
+            Return::Table => TableIterator::srf_next(function.call_info, call_table_iterator(&function)),
+            Return::SetOf => SetOfIterator::srf_next(function.call_info, call_setof_iterator(&function)),
+            Return::Scalar => call_scalar(&function),
+        }
     };
 
     Ok(datum)
 }
 
 #[pg_extern]
-unsafe fn plprql_call_validator(_function_id: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
+fn plprql_call_validator(_function_id: pg_sys::Oid, _function_call_info: pg_sys::FunctionCallInfo) {
     // TODO
 }
 
