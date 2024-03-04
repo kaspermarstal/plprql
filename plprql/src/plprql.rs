@@ -13,7 +13,7 @@ pub fn prql_to_sql(prql: &str) -> PlprqlResult<String> {
         color: false,
     };
 
-    compile(prql, opts).map_err(|err| PlprqlError::PrqlError(err))
+    compile(prql, opts).map_err(PlprqlError::PrqlError)
 }
 
 // Allows user to call "select prql('from people | filter planet_id == 1 | sort name') as (name text, age int);".
