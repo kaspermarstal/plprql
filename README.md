@@ -99,19 +99,22 @@ The following installation guides works on Debian.
 Run these commands to install PL/PRQL and its dependencies for PostgreSQL 16:
 
 ```cmd
-apt-get update && apt-get upgrade
-apt-get install -y curl wget gnupg lsb-release git
+sudo apt-get update && apt-get upgrade
+sudo apt-get install -y curl wget gnupg lsb-release git build-essential
 sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-apt-get update
-apt-get install -y postgresql-16 postgresql-server-dev-16
+sudo apt-get update
+sudo apt-get install -y postgresql-16 postgresql-server-dev-16
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source ~/.bashrc
 cargo install --locked --version=0.11.3 cargo-pgrx
 cargo pgrx init --pg16 $(which pg_config)
+git clone https://github.com/kaspermarstal/plprql
+cd plprql/plprql
+cargo pgrx install --no-default-features --release --sudo
 ```
 
-You can try it out in a vanilla docker container using `docker run -it --entrypoint /bin/bash debian:bookworm`.
+You can try it out in a vanilla docker container using `docker run -it --entrypoint /bin/bash debian:bookworm` and removing all references to sudo (commands in docker are already running as root).
 
 ### Install Deb File
 Follow these steps to install PL/PRQL from one of the released deb files:
