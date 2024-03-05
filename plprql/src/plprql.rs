@@ -1,11 +1,11 @@
 use crate::call::{call_scalar, call_setof_iterator, call_table_iterator};
-use crate::err::PlprqlResult;
+use crate::err::{PlprqlError, PlprqlResult};
 use crate::fun::{Function, Return};
 use pgrx::prelude::*;
-use prqlc::{compile, sql::Dialect, ErrorMessages, Options, Target};
+use prqlc::{compile, sql::Dialect, Options, Target};
 
 #[pg_extern]
-pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
+pub fn prql_to_sql(prql: &str) -> PlprqlResult<String> {
     let opts = &Options {
         format: false,
         target: Target::Sql(Some(Dialect::Postgres)),
@@ -13,7 +13,7 @@ pub fn prql_to_sql(prql: &str) -> Result<String, ErrorMessages> {
         color: false,
     };
 
-    compile(prql, opts)
+    compile(prql, opts).map_err(PlprqlError::PrqlError)
 }
 
 // Allows user to call "select prql('from people | filter planet_id == 1 | sort name') as (name text, age int);".
