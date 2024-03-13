@@ -26,7 +26,7 @@ pg_test = []
 [dependencies]
 pgrx = { version = "=0.11.3" }
 prqlc = { version = "0.11.3", features = ["postgres"] }
-thiserror = "1.0.57"
+thiserror = "1.0.58"
 
 [dev-dependencies]
 pgrx-tests = "=0.11.3"
