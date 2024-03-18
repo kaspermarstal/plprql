@@ -1,9 +1,25 @@
+// Copyright 2024 Supabase Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Copied from https://github.com/supabase/wrappers/blob/a27e55a6f284e8bdcbb5d710169bf3b9112ec37e/supabase-wrappers/src/interface.rs
+//
+// Modifications:
+// - Renamed Cell to AnyDatum
+
 use pgrx::{fcinfo, pg_sys, AnyNumeric, Date, FromDatum, IntoDatum, JsonB, PgBuiltInOids, PgOid, Timestamp};
 use std::ffi::CStr;
 use std::fmt;
-
-// From by https://github.com/supabase/wrappers/blob/a27e55a6f284e8bdcbb5d710169bf3b9112ec37e/supabase-wrappers/src/interface.rs
-// Added VARCHAROID and renamed Cell to AnyDatum.
 
 #[derive(Debug)]
 pub enum AnyDatum {
@@ -88,8 +104,8 @@ impl FromDatum for AnyDatum {
         if is_null {
             return None;
         }
-        let oid = PgOid::from(typoid);
-        match oid {
+
+        match PgOid::from(typoid) {
             PgOid::BuiltIn(PgBuiltInOids::BOOLOID) => Some(AnyDatum::Bool(bool::from_datum(datum, false).unwrap())),
             PgOid::BuiltIn(PgBuiltInOids::CHAROID) => Some(AnyDatum::I8(i8::from_datum(datum, false).unwrap())),
             PgOid::BuiltIn(PgBuiltInOids::INT2OID) => Some(AnyDatum::I16(i16::from_datum(datum, false).unwrap())),
