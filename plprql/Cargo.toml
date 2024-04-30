@@ -24,9 +24,9 @@ pg16 = ["pgrx/pg16", "pgrx-tests/pg16"]
 pg_test = []
 
 [dependencies]
-pgrx = { version = "=0.11.3" }
+pgrx = { version = "=0.11.4" }
 prqlc = { version = "0.11.3", features = ["postgres"] }
 thiserror = "1.0.59"
 
 [dev-dependencies]
-pgrx-tests = "=0.11.3"
+pgrx-tests = "=0.11.4"
