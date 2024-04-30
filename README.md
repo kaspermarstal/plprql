@@ -44,10 +44,10 @@ This is similar to how PL/Python, PL/Javascript, and PL/Rust are implemented.
 
 
 ### PRQL Compiler
-You can use the PRQL compiler to see the SQL statements that PostgreSQL executes under the hood. You can compile the above PRQL example to SQL with the `prql_to_sql()` function:
+You can use `prql_to_sql()` to see the SQL statements that PostgreSQL executes under the hood. This function invokes the PRQL compiler and shows you the resulting SQL code. Using the example above:
 
 ```sql
-select prql_to_sql(...); -- statements above omitted for brevity
+select prql_to_sql('...'); -- statements above omitted for brevity
 
  prql_to_sql 
 -------------
