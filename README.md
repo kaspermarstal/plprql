@@ -93,10 +93,10 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 > PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and your other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
 ## Getting Started
-The following installation guides works on Debian.
+The following installation guides work on Ubuntu and Debian.
 
 ### Quickstart 
-Run these commands to install PL/PRQL and its dependencies for PostgreSQL 16:
+Run these commands to install PL/PRQL and all of its dependencies for PostgreSQL 16:
 
 ```cmd
 sudo apt-get update && apt-get upgrade

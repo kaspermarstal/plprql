@@ -16,9 +16,9 @@ pg16 = ["pgrx/pg16", "pgrx-tests/pg16"]
 pg_test = []
 
 [dependencies]
-pgrx = "=0.11.4"
+pgrx = { workspace = true }
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.118"
 
 [dev-dependencies]
-pgrx-tests = "=0.11.4"
+pgrx-tests = { workspace = true }

@@ -2,7 +2,7 @@ use crate::call::{call_scalar, call_setof_iterator, call_table_iterator};
 use crate::err::{PlprqlError, PlprqlResult};
 use crate::fun::{Function, Return};
 use pgrx::prelude::*;
-use prqlc::{compile, sql::Dialect, Options, Target};
+use prqlc::{compile, sql::Dialect, DisplayOptions, Options, Target};
 
 #[pg_extern]
 pub fn prql_to_sql(prql: &str) -> PlprqlResult<String> {
@@ -11,6 +11,7 @@ pub fn prql_to_sql(prql: &str) -> PlprqlResult<String> {
         target: Target::Sql(Some(Dialect::Postgres)),
         signature_comment: false,
         color: false,
+        display: DisplayOptions::Plain,
     };
 
     compile(prql, opts).map_err(PlprqlError::PrqlError)
