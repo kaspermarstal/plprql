@@ -857,7 +857,7 @@ mod tests {
 
             assert_eq!(player1_kills, vec![4f64, 1f64]);
 
-            let player1_kills = client
+            let player1_kills_from_cursor = client
                 .select(
                     r#"
                         select prql('from matches | filter player == ''Player1''', 'player1_cursor');
@@ -869,7 +869,7 @@ mod tests {
                 .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
                 .collect::<Vec<_>>();
 
-            assert_eq!(player1_kills, vec![4f64, 1f64]);
+            assert_eq!(player1_kills_from_cursor, vec![4f64, 1f64]);
 
             Ok(())
         })

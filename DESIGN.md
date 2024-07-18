@@ -28,26 +28,33 @@ The `prql_to_sql` function is responsible for invoking the PRQL compiler with th
 Users can execute PRQL code in two ways. Defining procedural language handlers (functions) or use the predefined `prql` function. 
 
 ### Using functions
-The user can define PostgreSQL functions and mark them as `language plprql`. This is similar to how PL/Python, PL/Javascript, and PL/Rust are supported. For example:
+The user can define PostgreSQL functions and mark them as `language plprql`. This works in the same way as e.g. PL/Python, PL/Javascript, and PL/Rust. For example:
 
 ```
-create function people_on_tatooine($1) returns setof people as $$
-    from people 
-    filter planet_id == 1 
-    sort name
+create function player_stats($1) returns setof matches as $$
+    from matches 
+    filter player == $1
 $$ language plprql
 ```
 
  The `plprql_call_handler` is the main entry point for executing PL/PRQL functions. When a user calls a PL/PRQL function, the handler receives the `pg_sys::FunctionCallInfo` struct from PostgreSQL, which contains the function's body, arguments, return type, and other attributes. The handler uses the PRQL library to compile the function body from PRQL into SQL. It then uses pgrx bindings to PostgreSQL's Server Programming Interface (SPI) to run the query and takes special care to safely copy results from the memory context of SPI into the memory context of the function.
 
 ### Using the `prql` function
-The user can pass PRQL code to the predefined `prql` function. For example:
+The user can pass PRQL code to the `prql` function. For example:
 
 ```
-select prql('from people | filter planet_id == 1 | sort name', 'prql_cursor');
+select prql('from matches | filter player == ''Player1''') 
+as (id int, match_id int, round int, player text, kills int, deaths int) 
+limit 2;
+
+ id | match_id | round | player  | kills | deaths 
+----+----------+-------+---------+-------+--------
+  1 |     1001 |     1 | Player1 |     4 |      1
+  3 |     1001 |     2 | Player1 |     1 |      7
+(2 rows)
 ```
 
-This function takes a string, a cursor name and returns a cursor. The user can subsequently fetch data using `fetch 8 from prql_cursor;` which is useful for e.g. custom SQL in ORMs.
+This function takes a string and an optional cursor name. This function is useful for e.g. custom SQL in ORMs. If a cursor name is supplied, the function returns a cursor, the user can omit the `as (...)` clause, and subsequently fetch data using `fetch 2 from prql_cursor;`
 
 ## Returning Scalars, Sets, and Tables from plprql_call_handler
 
@@ -57,12 +64,14 @@ pgrx expects SRFs to return either a `TableIterator` or a `SetOfIterator`. Inter
 
 However, because procedural language handlers must return `datum`s, the `plprql_call_handler` cannot return `TableIterator` or `SetOfIterator` and let pgrx call `srf_next` as pgrx functions usually do. Instead, the `plprql_call_handler` inspects a function's return signature and calls `srf_next` itself on the corresponding iterator. This lets PL/PRQL re-use these iterators and take advantage of pgrx's well-tested and battle-hardened memory management across the PostgreSQL FFI boundary. 
 
-Both `TableIterator` and `SetOfIterator` take as argument a function that returns an iterator with the result. This is an `FnOnce` function that is run on the first call to `TableIterator` and `SetOfIterator` only. Since the `plprql_call_handler` lacks access to this function's return value, it cannot handle errors. Instead, the `FnOnce` function is designed to use the `report()` function provided by pgrx. `report()` works similarly to `unwrap()` and returns either the `Ok()` value or halts execution by calling PostgreSQL's error reporting function. The user will see a regular PostgreSQL error.
+Both `TableIterator` and `SetOfIterator` takes as argument a function that runs the user's query and returns an iterator with the result. This is an `FnOnce` function that is run on the first call to `TableIterator` and `SetOfIterator`. 
+
+`TableIterator` and `SetOfIterator` consumes the user's function. The `plprql_call_handler` has no access to returned result or `Err` and thus cannot handle errors itself. Instead, the `FnOnce` function is designed to use the `report()` function provided by pgrx. `report()` works similarly to `unwrap()` and returns either the `Ok()` value or halts execution. Execution is halted by calling PostgreSQL's own error reporting function, so the user will still see a regular PostgreSQL error.
 
 `TableIterator` and `SetOfIterator` automatically save state across calls.
 # Testing
 
-The pgrx library provides a testing framework that allows tests to be written in Rust and executed within PostgreSQL v11-16 instances. The framework runs each test in its own transaction that is aborted in the end, ensuring isolated test environments and no cross-contamination of state or data.
+The pgrx library provides a testing framework that allows tests to be written in Rust and executed within PostgreSQL v12-16 instances. The framework runs each test in its own transaction that is aborted in the end, ensuring isolated test environments and no cross-contamination of state or data.
 
 Tests are in place to validate that the compiler can be called from PostgreSQL and that the SQL generated from PRQL runs successfully in PostgreSQL. In addition, the extension tests that results match the results of handwritten SQL counterparts, that return modes (Scalar, SetOfIterator, and TableIterator) and supported types are handled correctly (including NULL values), and that the README examples are valid. 
 
