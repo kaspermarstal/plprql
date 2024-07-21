@@ -95,27 +95,6 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 ## Getting Started
 The following installation guides work on Ubuntu and Debian.
 
-### Quickstart 
-Run these commands to install PL/PRQL and all of its dependencies for PostgreSQL 16:
-
-```cmd
-sudo apt-get update && apt-get upgrade
-sudo apt-get install -y curl wget gnupg lsb-release git build-essential
-sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-sudo apt-get update
-sudo apt-get install -y postgresql-16 postgresql-server-dev-16
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source ~/.bashrc
-cargo install --locked --version=0.11.3 cargo-pgrx
-cargo pgrx init --pg16 $(which pg_config)
-git clone https://github.com/kaspermarstal/plprql
-cd plprql/plprql
-cargo pgrx install --no-default-features --release --sudo
-```
-
-You can try it out in a vanilla docker container using `docker run -it --entrypoint /bin/bash debian:bookworm` and removing all references to sudo (commands in docker are already running as root).
-
 ### Install Deb File
 Follow these steps to install PL/PRQL from one of the released deb files:
 
@@ -215,6 +194,28 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
          $$ language plprql
    psql> select match_stats(1);
    ```
+   
+### Quickstart 
+Run these commands to install PL/PRQL and all of its dependencies for PostgreSQL 16:
+
+```cmd
+sudo apt-get update && apt-get upgrade
+sudo apt-get install -y curl wget gnupg lsb-release git build-essential
+sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+sudo apt-get update
+sudo apt-get install -y postgresql-16 postgresql-server-dev-16
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source ~/.bashrc
+cargo install --locked --version=0.11.3 cargo-pgrx
+cargo pgrx init --pg16 $(which pg_config)
+git clone https://github.com/kaspermarstal/plprql
+cd plprql/plprql
+cargo pgrx install --no-default-features --release --sudo
+```
+
+You can try this out in a vanilla docker container using `docker run -it --entrypoint /bin/bash debian:bookworm` and copying the code above into the terminal. You must remove all references to sudo as commands in docker are already running as root.
+
 
 ### Running Tests 
 You can run tests using `cargo pgrx test pg16`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate. From the root source directory:
