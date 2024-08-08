@@ -82,4 +82,10 @@ jobs:
           cargo pgrx init --pg${{ matrix.pg }} download
       - name: Run clippy
         run: cargo clippy --all-targets --no-default-features --features pg${{ matrix.pg }} -- -D warnings
+  commitlint:
+    runs-on: ubuntu-latest
+    name: Convention Commits
+    steps:
+      - name: Run commitlint
+        uses: opensource-nepal/commitlint@v1
 
