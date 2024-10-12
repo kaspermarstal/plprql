@@ -39,9 +39,6 @@ select * from match_stats(1001)
  Player2 |      1.6
 (2 rows)
 ```
-This is similar to how PL/Python, PL/Javascript, and PL/Rust are implemented. 
-
-
 
 ### PRQL Compiler
 You can use `prql_to_sql()` to see the SQL statements that PostgreSQL executes under the hood. This function invokes the PRQL compiler and shows you the resulting SQL code. Using the example above:
@@ -93,7 +90,14 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 > PRQL supports `select` statements only. `insert`, `update`, and `delete` statements, and your other database code, will continue to live in vanilla SQL, ORMs, or other database frameworks.
 
 ## Getting Started
-The following installation guides work on Ubuntu and Debian.
+
+You can install the PL/PRQL extension in three ways:
+
+- [Install Deb File](#install-deb-file): Download .deb file from releases page.
+- [Install From Source](#install-from-source): Clone the repository and build the extension on your own machine.
+- [Run Shell Script](#run-shell-script): Download and run a shell script builds the extension on your own machine for you.
+
+The instruction assume you use Ubuntu or Debian.
 
 ### Install Deb File
 Follow these steps to install PL/PRQL from one of the released deb files:
@@ -112,38 +116,7 @@ Follow these steps to install PL/PRQL from one of the released deb files:
    
 This only requires that you have PostgreSQL installed on beforehand. Replace the major version of PostgreSQL in the deb's filename if needed. Supported versions are 12, 13, 14, 15, and 16.
 
-### Install From Shell Script
-Make sure you have the following prerequisites installed (apt package names in parentheses):
-
-- PostgreSQL (`postgresql-16`)
-- PostgreSQL server headers (`postgresql-server-dev-16`)
-- A C compiler (`clang`)
-- Utilities for the shell script (`curl`, `wget`, `gnupg`, `lsb-release`, `git`, `jq`)
-- Cargo and pgrx:
-    ```cmd
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    source ~/.bashrc
-    cargo install --locked --version=0.11.3 cargo-pgrx
-    ```
-
-
-Run the following command to download and execute the shell script in [scripts/install.sh](scripts/install.sh):
-
-```cmd
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/scripts/install.sh | bash
-```
-   
-This will install the tip of the main branch using `pg_config` on your path.
-
-You can customize the PostgreSQL installation and/or the PL/PRQL version using the `--pg-config` and `--revision` flags:
-
-```cmd
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/scripts/install.sh > install.sh
-chmod +x ./install.sh
-./install.sh --pg-version /usr/bin/pg_config --revision 186faea
-```
-
-### Set Up Development Environment
+### Install From Source
 PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgrx) framework for writing PostgreSQL extensions in Rust. This framework comes with development tools that you need to install. Follow these steps to set up your development environment:
 
 1. Install `cargo`.
@@ -194,9 +167,32 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
          $$ language plprql
    psql> select match_stats(1);
    ```
+
+### Run Shell Script
+Run the following command to download and execute the shell script in [scripts/install.sh](scripts/install.sh):
+
+```cmd
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/scripts/install.sh | bash
+```
    
-### Quickstart 
-Run these commands to install PL/PRQL and all of its dependencies for PostgreSQL 16:
+This will install the tip of the main branch using `pg_config` on your path.
+
+You can customize the PostgreSQL installation and/or the PL/PRQL version using the `--pg-config` and `--revision` flags:
+
+```cmd
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/scripts/install.sh > install.sh
+chmod +x ./install.sh
+./install.sh --pg-version /usr/bin/pg_config --revision 186faea
+```
+
+You need the following packages for the shell script to run:
+
+- A C compiler
+- PostgreSQL and header files
+- Rust, Cargo, and pgrx
+- Utilities for the shell script (curl, wget, gnupg, lsb-release, git, jq)
+
+You can install these dependencies with the following commands:
 
 ```cmd
 sudo apt-get update && apt-get upgrade
@@ -209,13 +205,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source ~/.bashrc
 cargo install --locked --version=0.11.3 cargo-pgrx
 cargo pgrx init --pg16 $(which pg_config)
-git clone https://github.com/kaspermarstal/plprql
-cd plprql/plprql
-cargo pgrx install --no-default-features --release --sudo
 ```
-
-You can try this out in a vanilla docker container using `docker run -it --entrypoint /bin/bash debian:bookworm` and copying the code above into the terminal. You must remove all references to sudo as commands in docker are already running as root.
-
 
 ### Running Tests 
 You can run tests using `cargo pgrx test pg16`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate. From the root source directory:
