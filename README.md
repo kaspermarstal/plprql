@@ -91,11 +91,13 @@ For more information on PRQL, visit the PRQL [website](https://prql-lang.org/), 
 
 ## Getting Started
 
-You can install the PL/PRQL extension in three ways:
+You can install the PL/PRQL extension in four ways:
 
 - [Install Deb File](#install-deb-file): Download .deb file from releases page.
 - [Install From Source](#install-from-source): Clone the repository and build the extension on your own machine.
+- [Run Dockerfile](#run-dockerfile): Build a docker image with PostgreSQL and the extension.
 - [Run Shell Script](#run-shell-script): Download and run a shell script builds the extension on your own machine for you.
+
 
 The instruction assume you use Ubuntu or Debian.
 
@@ -167,6 +169,25 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
          $$ language plprql
    psql> select match_stats(1);
    ```
+   
+### Run Dockerfile
+
+The `docker/plprql.Dockerfile` builds the `postgres:16-bookworm` docker image with the extension installed. You run this Dockerfile on your own machine with the following commands:
+
+```cmd
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/docker/plprql.Dockerfile > plprql.Dockerfile
+docker build --tag 'plprql' . -f plprql.Dockerfile
+```
+
+The dockerfile downloads a .deb file from the releases page and installs it into the official `postgres:16-bookworm` image.
+
+You can quickly test that the extension is installed and works as expected:
+
+```cmd
+CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust plprql)
+docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
+docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql1('from table')"
+```
 
 ### Run Shell Script
 Run the following command to download and execute the shell script in [scripts/install.sh](scripts/install.sh):

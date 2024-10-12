@@ -54,7 +54,7 @@ jobs:
           -t "plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }}" \
           -f ".github/docker/Dockerfile.${{ matrix.os.distribution }}" \
           .
-      - name: Extract .deb
+      - name: Copy .deb from docker image to runner
         run: |
           CONTAINER_ID=$(docker create plprql-$PLPRQL_VERSION-pg-${{ matrix.pg }}-${{ matrix.os.distribution }}-${{ matrix.os.release }})
           docker cp $CONTAINER_ID:/artifacts /home/runner
