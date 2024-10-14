@@ -34,22 +34,22 @@ impl IntoHeapTuple for Row {
 
 pub(crate) fn call_table_iterator(function: &Function) -> impl FnOnce() -> Option<TableIterator<'static, Row>> + '_ {
     || -> Option<TableIterator<'static, Row>> {
-        let sql = prql_to_sql(&function.body()).report();
-        let arguments = function.arguments().report();
+        let sql = prql_to_sql(&function.body()).unwrap_or_report();
+        let arguments = function.arguments().unwrap_or_report();
 
         Spi::connect(|client| {
             let rows = client
                 .select(&sql, None, arguments)
-                .report()
+                .unwrap_or_report()
                 .map(|heap_tuple| Row {
                     datums: (0..heap_tuple.columns())
                         .map(|i| {
                             heap_tuple
                                 // Ordinals are 1-indexed
                                 .get_datum_by_ordinal(i + 1)
-                                .report()
+                                .unwrap_or_report()
                                 .value::<AnyDatum>()
-                                .report()
+                                .unwrap_or_report()
                         })
                         .collect::<Vec<Option<AnyDatum>>>(),
                 })
@@ -68,20 +68,20 @@ pub(crate) fn call_setof_iterator(
     function: &Function,
 ) -> impl FnOnce() -> Option<SetOfIterator<'static, Option<AnyDatum>>> + '_ {
     || -> Option<SetOfIterator<'static, Option<AnyDatum>>> {
-        let sql = prql_to_sql(&function.body()).report();
-        let arguments = function.arguments().report();
+        let sql = prql_to_sql(&function.body()).unwrap_or_report();
+        let arguments = function.arguments().unwrap_or_report();
 
         Spi::connect(|client| {
             let column = client
                 .select(&sql, None, arguments)
-                .report()
+                .unwrap_or_report()
                 .map(|heap_tuple| {
                     heap_tuple
                         // Ordinals are 1-indexed
                         .get_datum_by_ordinal(1)
-                        .report()
+                        .unwrap_or_report()
                         .value::<AnyDatum>()
-                        .report()
+                        .unwrap_or_report()
                 })
                 .collect::<Vec<Option<AnyDatum>>>();
 
@@ -95,16 +95,16 @@ pub(crate) fn call_setof_iterator(
 }
 
 pub(crate) fn call_scalar(function: &Function) -> pg_sys::Datum {
-    let sql = prql_to_sql(&function.body()).report();
-    let arguments = function.arguments().report();
+    let sql = prql_to_sql(&function.body()).unwrap_or_report();
+    let arguments = function.arguments().unwrap_or_report();
 
     Spi::connect(|client| {
         client
             .select(&sql, None, arguments)
-            .report()
+            .unwrap_or_report()
             .first()
             .get_one::<AnyDatum>()
-            .report()
+            .unwrap_or_report()
             .into_datum()
     })
     .unwrap_or_else(|| unsafe { pg_return_null(function.call_info) })
