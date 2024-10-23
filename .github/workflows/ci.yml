@@ -23,6 +23,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install icu
+        if: runner.os == 'macOS' && matrix.pg == '16'
+        run: |
+          brew icu4c
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
@@ -40,10 +44,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install postgresql-server-dev-14
-      - name: Install icu
-        if: runner.os == 'macOS' && matrix.pg == '16'
-        run: |
-          brew icu4c
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
