@@ -3,17 +3,17 @@
 
 # PRQL in PostgreSQL!
 
-PL/PRQL is a PostgreSQL extension that lets you write functions with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v12-16 on Linux and macOS.
+PL/PRQL is a PostgreSQL extension that lets you write stored procedures with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v12-16 on Linux and macOS.
 
 ## What is PRQL?
-PRQL (Pipelined Relational Query Language) is an open source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept (similar to Unix pipes) that transforms data line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write.
+PRQL (Pipelined Relational Query Language) is an open source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept (similar to Unix pipes) that transforms data line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write. With PL/PRQL you can write Procedural Language (PL) functions (stored procedures) with PRQL instead of the traditional PL/pgSQL and combine the simplicity of PRQL with the power of stored procedures.
 
 ## Key features
-- [Write functions with PRQL](#functions) - Useful for large analytical queries
-- [PRQL compiler](#prql-compiler) - Useful for development and debugging
-- [Inline execution](#inline-execution) - Useful for prototyping and custom queries in ORMs
+- [Write functions with PRQL](#write-functions-with-prql) - Useful for large analytical queries
+- [Compile PRQL strings to SQL strings](#compile-prql-strings-to-sql-strings) - Useful for development and debugging
+- [Execute PRQL queries](#execute-prql-queries) - Useful for prototyping and custom queries in ORMs
 
-### Functions
+### Write functions with PRQL
 PRQL shines when your SQL queries becomes very long and complex. You can manage this complexity by porting your most impressive SQL incantations to PRQL functions, which can then be used in dashboards, business logic or other database code. For example:
 
 ```sql
@@ -40,7 +40,7 @@ select * from match_stats(1001)
 (2 rows)
 ```
 
-### PRQL Compiler
+### Compile PRQL strings to SQL strings
 You can use `prql_to_sql()` to see the SQL statements that PostgreSQL executes under the hood. This function invokes the PRQL compiler and shows you the resulting SQL code. Using the example above:
 
 ```sql
@@ -61,7 +61,7 @@ WHERE _expr_1 > 0
 (1 row)
 ```
 
-### Inline Execution
+### Execute PRQL queries
 You can run PRQL code directly with the `prql` function. This is useful for e.g. custom queries in ORMs:
  
 ```sql
