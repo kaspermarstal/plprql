@@ -10,11 +10,11 @@ PRQL (Pipelined Relational Query Language) is an open source query language for 
 
 ## Key features
 - [Write functions with PRQL](#write-functions-with-prql) - Useful for large analytical queries
-- [Compile PRQL strings to SQL strings](#compile-prql-strings-to-sql-strings) - Useful for development and debugging
+- [Compile PRQL queries to SQL queries](#compile-prql-queries-to-sql-queries) - Useful for development and debugging
 - [Execute PRQL queries](#execute-prql-queries) - Useful for prototyping and custom queries in ORMs
 
 ### Write functions with PRQL
-PRQL shines when your SQL queries becomes very long and complex. You can manage this complexity by porting your most impressive SQL incantations to PRQL functions, which can then be used in dashboards, business logic or other database code. For example:
+PRQL shines when your SQL queries becomes long and complex. You can manage this complexity by porting your most impressive SQL incantations to PRQL functions, which can then be used in dashboards, business logic or other database code. For example:
 
 ```sql
 create function match_stats(int) returns table(player text, kd_ratio float) as $$
@@ -40,7 +40,7 @@ select * from match_stats(1001)
 (2 rows)
 ```
 
-### Compile PRQL strings to SQL strings
+### Compile PRQL queries to SQL queries
 You can use `prql_to_sql()` to see the SQL statements that PostgreSQL executes under the hood. This function invokes the PRQL compiler and shows you the resulting SQL code. Using the example above:
 
 ```sql
@@ -62,7 +62,7 @@ WHERE _expr_1 > 0
 ```
 
 ### Execute PRQL queries
-You can run PRQL code directly with the `prql` function. This is useful for e.g. custom queries in ORMs:
+You can run PRQL code directly with the `prql` function. This is useful for e.g. custom queries in application code:
  
 ```sql
 select prql('from matches | filter player == ''Player1''') 
