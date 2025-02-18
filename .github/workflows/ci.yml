@@ -23,10 +23,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install icu
+      - name: Install dependencies
         if: runner.os == 'macOS' && matrix.pg == '16'
         run: |
           brew install icu4c
+          sudo apt-get install libreadline8
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
