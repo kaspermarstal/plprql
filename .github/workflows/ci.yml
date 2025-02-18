@@ -95,7 +95,7 @@ jobs:
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
           cargo pgrx init --pg16 download
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets --no-default-features --features pg16 -- -D warnings
   commitlint:
     runs-on: ubuntu-latest
     name: Conventional Commits
