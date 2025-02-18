@@ -86,7 +86,7 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg${{ matrix.pg }} download
+          cargo pgrx init --pg16 download
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings
   commitlint:
