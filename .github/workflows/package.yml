@@ -96,12 +96,12 @@ jobs:
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
-          sudo apt-get install postgresql-server-dev-14
+          sudo apt-get install postgresql-server-dev-16
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg14 $(which pg_config)
+          cargo pgrx init --pg16 $(which pg_config)
       - name: Run install.sh
         run: |
           cd scripts
