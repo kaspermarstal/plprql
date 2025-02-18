@@ -77,9 +77,6 @@ jobs:
         run: cargo fmt -- --check
   rust-clippy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pg: [ "16" ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -91,7 +88,7 @@ jobs:
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
           cargo pgrx init --pg${{ matrix.pg }} download
       - name: Run clippy
-        run: cargo clippy --all-targets --no-default-features --features pg${{ matrix.pg }} -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
   commitlint:
     runs-on: ubuntu-latest
     name: Conventional Commits
