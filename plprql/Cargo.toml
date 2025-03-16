@@ -12,7 +12,11 @@ keywords = ["sql", "prql", "postgresql", "extension", "pgrx"]
 license = "Apache-2.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
+
+[[bin]]
+name = "pgrx_embed_plprql"
+path = "src/bin/pgrx_embed.rs"
 
 [features]
 default = ["pg16"]

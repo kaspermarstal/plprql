@@ -1,6 +1,8 @@
+use crate::anydatum::AnyDatum;
 use crate::call::{call_scalar, call_setof_iterator, call_table_iterator};
 use crate::err::{PlprqlError, PlprqlResult};
 use crate::fun::{Function, Return};
+use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
 use prqlc::{compile, sql::Dialect, DisplayOptions, Options, Target};
 
@@ -28,7 +30,7 @@ extension_sql!(
     name = "prql"
 );
 
-// Allows user to call "select prql('from people | filter planet_id == 1 | sort name', 'prql_cursor);" and
+// Allows user to call "select prql('from people | filter planet_id == 1 | sort name', 'prql_cursor');" and
 // subsequently fetch data with a cursor using "fetch 8 from prql_cursor;". Useful for e.g. custom SQL in ORMs.
 extension_sql!(
     "create function prql(str text, cursor_name text) returns refcursor as $$
@@ -57,18 +59,17 @@ extension_sql!(
     returns language_handler
     language C as 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
-fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<pg_sys::Datum> {
-    let function = Function::from_call_info(function_call_info)?;
+fn plprql_call_handler(function_call_info: pg_sys::FunctionCallInfo) -> PlprqlResult<Option<AnyDatum>> {
+    let function = Function::from_call_info(function_call_info).unwrap_or_report();
 
-    let datum = unsafe {
+    unsafe {
         match function.return_mode() {
-            Return::Table => TableIterator::srf_next(function.call_info, call_table_iterator(&function)),
-            Return::SetOf => SetOfIterator::srf_next(function.call_info, call_setof_iterator(&function)),
-            Return::Scalar => call_scalar(&function),
+            // Return::Table => TableIterator::srf_next(function.call_info, call_table_iterator(&function)),
+            // Return::SetOf => SetOfIterator::srf_next(function.call_info, call_setof_iterator(&function)),
+            Return::Scalar => Ok(call_scalar(&function)),
+            _ => panic!("not scalar"),
         }
-    };
-
-    Ok(datum)
+    }
 }
 
 #[pg_extern]

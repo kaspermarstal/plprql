@@ -1,6 +1,7 @@
-comment = 'plprql_tests:  Created by pgrx'
+comment = 'plprql_tests:  Integration tests for PL/PRQL'
 default_version = '@CARGO_VERSION@'
 module_pathname = '$libdir/plprql_tests'
 relocatable = false
 superuser = true
 requires = 'plprql'
+trusted = false

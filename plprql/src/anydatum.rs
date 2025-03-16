@@ -16,8 +16,12 @@
 //
 // Modifications:
 // - Renamed Cell to AnyDatum
+// - Updated to pgrx v0.12.9
 
-use pgrx::{fcinfo, pg_sys, AnyNumeric, Date, FromDatum, IntoDatum, JsonB, PgBuiltInOids, PgOid, Timestamp};
+use pgrx::callconv::{BoxRet, FcInfo};
+use pgrx::datum::{Date, Timestamp};
+use pgrx::pgrx_sql_entity_graph::metadata::{Returns, ReturnsError, SqlMapping, SqlTranslatable};
+use pgrx::{fcinfo, pg_sys, AnyNumeric, FromDatum, IntoDatum, JsonB, PgBuiltInOids, PgOid};
 use std::ffi::CStr;
 use std::fmt;
 
@@ -35,6 +39,25 @@ pub enum AnyDatum {
     Date(Date),
     Timestamp(Timestamp),
     Json(JsonB),
+}
+
+unsafe impl BoxRet for AnyDatum {
+    unsafe fn box_into<'fcx>(self, fcinfo: &mut FcInfo<'fcx>) -> pgrx::datum::Datum<'fcx> {
+        match self.into_datum() {
+            Some(datum) => unsafe { fcinfo.return_raw_datum(datum) },
+            None => fcinfo.return_null(),
+        }
+    }
+}
+
+unsafe impl<'a> BoxRet for &'a AnyDatum {
+    unsafe fn box_into<'fcx>(self, fcinfo: &mut FcInfo<'fcx>) -> pgrx::datum::Datum<'fcx> {
+        // Clone the AnyDatum (since we can't move out of a reference) and then use its IntoDatum implementation
+        match self.clone().into_datum() {
+            Some(datum) => unsafe { fcinfo.return_raw_datum(datum) },
+            None => fcinfo.return_null(),
+        }
+    }
 }
 
 impl Clone for AnyDatum {
@@ -154,5 +177,16 @@ impl fmt::Display for AnyDatum {
             },
             AnyDatum::Json(v) => write!(f, "{:?}", v),
         }
+    }
+}
+
+// Implement SqlTranslatable for AnyDatum to fix FunctionMetadata trait issue
+unsafe impl SqlTranslatable for AnyDatum {
+    fn argument_sql() -> Result<SqlMapping, pgrx::pgrx_sql_entity_graph::metadata::ArgumentError> {
+        Ok(SqlMapping::literal("anyelement"))
+    }
+
+    fn return_sql() -> Result<pgrx::pgrx_sql_entity_graph::metadata::Returns, ReturnsError> {
+        Ok(Returns::One(SqlMapping::literal("anyelement")))
     }
 }
