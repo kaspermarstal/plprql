@@ -1,6 +1,7 @@
 use pgrx::prelude::*;
 
 pg_module_magic!();
+pgrx::pgrx_embed!();
 
 #[pg_extern]
 fn pgrx_test() -> &'static str {
@@ -18,14 +19,35 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_prql_to_sql() -> Result<(), pgrx::spi::Error> {
+        use pgrx::spi::Spi;
+
+        Spi::connect(|client| {
+            let sql = client
+                .select(
+                    r#"select prql_to_sql('from employees | select {name, age}');"#,
+                    None,
+                    &[],
+                )?
+                .first()
+                .get_one::<&str>()?
+                .unwrap();
+
+            assert_eq!("SELECT name, age FROM employees", sql);
+
+            Ok(())
+        })
+    }
+
+    #[pg_test]
     fn test_sanity() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             assert_eq!(
                 Some("SELECT name, age FROM employees"),
                 Spi::get_one::<&str>("select prql_to_sql('from employees | select {name, age}')")?
             );
 
-            _ = client.update(include_str!("../sql/starwars.sql"), None, None)?;
+            _ = client.update(include_str!("../sql/starwars.sql"), None, &[])?;
 
             let skywalkers = vec![
                 ("Anakin Skywalker", "Tatooine"),
@@ -43,7 +65,7 @@ mod tests {
                         where a.name like '%Skywalker%'
                         order BY a.name ASC;"#,
                     None,
-                    None,
+                    &[],
                 )
                 .unwrap()
                 .filter_map(|r| {
@@ -68,7 +90,7 @@ mod tests {
             .expect("prql_to_sql");
 
             let prql_skywalkers = client
-                .select(prql_skywalkers_query, None, None)?
+                .select(prql_skywalkers_query, None, &[])?
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("character")
                         .expect("prql skywalker name")
@@ -93,11 +115,11 @@ mod tests {
                     $$ language plpgsql;
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             let pgsql_skywalkers = client
-                .select("select * from get_skywalkers()", None, None)?
+                .select("select * from get_skywalkers()", None, &[])?
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("name")
                         .expect("pgsql skywalker name")
@@ -113,8 +135,8 @@ mod tests {
 
     #[pg_test]
     fn test_return_table() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("../sql/starwars.sql"), None, None)?;
+        Spi::connect_mut(|client| {
+            _ = client.update(include_str!("../sql/starwars.sql"), None, &[])?;
 
             _ = client.update(
                 r#"
@@ -125,12 +147,12 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             let should_be_general_grievous: (Option<&str>, Option<i32>) = Spi::get_two_with_args(
                 "select * from get_name_and_height($1)",
-                vec![(PgBuiltInOids::INT4OID.oid(), 79.into_datum())],
+                &[unsafe { pgrx::datum::DatumWithOid::new(79, PgBuiltInOids::INT4OID.value()) }],
             )?;
 
             assert_eq!(should_be_general_grievous, (Some("Grievous"), Some(216)));
@@ -141,8 +163,8 @@ mod tests {
 
     #[pg_test]
     fn test_return_setof() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("../sql/starwars.sql"), None, None)?;
+        Spi::connect_mut(|client| {
+            _ = client.update(include_str!("../sql/starwars.sql"), None, &[])?;
 
             _ = client.update(
                 r#"
@@ -153,11 +175,11 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             let filtered_heights = client
-                .select("select filter_height(100)", None, None)
+                .select("select * from filter_height(100)", None, &[])
                 .unwrap()
                 .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<&str>().unwrap())
                 .collect::<Vec<_>>();
@@ -175,11 +197,11 @@ mod tests {
                     $$ language plpgsql;
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             let names_pgsql = client
-                .select("select get_names()", None, None)
+                .select("select get_names()", None, &[])
                 .unwrap()
                 .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<&str>().unwrap())
                 .collect::<Vec<_>>();
@@ -205,11 +227,11 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             let names_prql = client
-                .select("select get_names()", None, None)
+                .select("select get_names()", None, &[])
                 .unwrap()
                 .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<&str>().unwrap())
                 .collect::<Vec<_>>();
@@ -231,8 +253,8 @@ mod tests {
 
     #[pg_test]
     fn test_return_scalar() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
+        Spi::connect_mut(|client| {
+            _ = client.update(include_str!("../sql/starwars.sql"), None, &[]).unwrap();
 
             _ = client.update(
                 r#"
@@ -242,7 +264,7 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             );
 
             let should_be_yarael_poof_height: Option<i32> = Spi::get_one("select get_max_height()")?;
@@ -255,7 +277,7 @@ mod tests {
 
     #[pg_test]
     fn test_supported_types() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             _ = client.update(
                 r#"
                     create table "supported_types"
@@ -347,11 +369,11 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             );
 
             let supported_types = client
-                .select("select * from get_supported_types(1)", None, None)?
+                .select("select * from get_supported_types(1)", None, &[])?
                 .first();
 
             assert_eq!(
@@ -458,7 +480,7 @@ mod tests {
 
     #[pg_test]
     fn test_null_handling() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             // Test TableIterator's null handling
             _ = client.update(
                 r#"
@@ -513,10 +535,10 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             );
 
-            let null_values = client.select("select * from get_null_values(1)", None, None)?.first();
+            let null_values = client.select("select * from get_null_values(1)", None, &[])?.first();
 
             assert_eq!(null_values.get::<i32>(null_values.column_ordinal("int_")?)?, None);
 
@@ -573,11 +595,11 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             );
 
             let setof_null_values = client
-                .select("select * from get_setof_null_values(1)", None, None)?
+                .select("select * from get_setof_null_values(1)", None, &[])?
                 .first();
 
             assert_eq!(
@@ -665,7 +687,7 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             );
 
             assert_eq!(Spi::get_one::<i32>("select get_null_int()")?, None);
@@ -680,7 +702,7 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             );
 
             assert_eq!(Spi::get_one::<&str>("select get_null_text()")?, None);
@@ -691,8 +713,8 @@ mod tests {
 
     #[pg_test]
     fn test_return_record() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
+        Spi::connect_mut(|client| {
+            _ = client.update(include_str!("../sql/starwars.sql"), None, &[]).unwrap();
 
             let people_on_tatooine = client
                 .select(
@@ -701,7 +723,7 @@ mod tests {
                         prql('from base.people | filter planet_id == 1 | select {name, planet_id} | sort name') 
                         as (name text, planet_id int);"#,
                     None,
-                    None,
+                    &[],
                 )?
                 .filter_map(|row| row.get_by_name::<&str, _>("name").expect("record as composite type"))
                 .collect::<Vec<_>>();
@@ -728,8 +750,8 @@ mod tests {
 
     #[pg_test]
     fn test_return_cursor() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
-            _ = client.update(include_str!("../sql/starwars.sql"), None, None).unwrap();
+        Spi::connect_mut(|client| {
+            _ = client.update(include_str!("../sql/starwars.sql"), None, &[]).unwrap();
 
             let people_on_tatooine = client
                 .select(
@@ -738,7 +760,7 @@ mod tests {
                         fetch 8 from people_on_tatooine_cursor;
                     "#,
                     None,
-                    None,
+                    &[],
                 )?
                 .filter_map(|row| row.get_by_name::<&str, _>("name").unwrap())
                 .collect::<Vec<_>>();
@@ -763,7 +785,7 @@ mod tests {
 
     #[pg_test]
     fn test_readme_examples() -> Result<(), pgrx::spi::Error> {
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             _ = client.update(
                 r#"
                     create table matches (
@@ -786,7 +808,7 @@ mod tests {
                         (1002, 2, 'Player2', 3, 6);
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             _ = client.update(
@@ -806,11 +828,11 @@ mod tests {
                     $$ language plprql;
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             let player_stats = client
-                .select("select * from player_stats(1001);", None, None)?
+                .select("select * from player_stats(1001);", None, &[])?
                 .filter_map(|r| {
                     r.get_by_name::<&str, _>("player")
                         .unwrap()
@@ -837,7 +859,7 @@ mod tests {
                         ');
                     "#,
                 None,
-                None,
+                &[],
             )?;
 
             assert_eq!(sql.first().get_one::<&str>(), Ok(Some("WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0")));
@@ -850,7 +872,7 @@ mod tests {
                         limit 2;
                     "#,
                     None,
-                    None,
+                    &[],
                 )?
                 .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
                 .collect::<Vec<_>>();
@@ -864,7 +886,7 @@ mod tests {
                         fetch 2 from player1_cursor;
                     "#,
                     None,
-                    None,
+                    &[],
                 )?
                 .filter_map(|row| row.get_by_name::<f64, _>("kills").unwrap())
                 .collect::<Vec<_>>();

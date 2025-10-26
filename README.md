@@ -3,7 +3,7 @@
 
 # PRQL in PostgreSQL!
 
-PL/PRQL is a PostgreSQL extension that lets you write stored procedures with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v12-16 on Linux and macOS.
+PL/PRQL is a PostgreSQL extension that lets you write stored procedures with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v13-18 on Linux and macOS.
 
 ## What is PRQL?
 PRQL (Pipelined Relational Query Language) is an open source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept (similar to Unix pipes) that transforms data line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write. With PL/PRQL you can write Procedural Language (PL) functions (stored procedures) with PRQL instead of the traditional PL/pgSQL and combine the simplicity of PRQL with the power of stored procedures.

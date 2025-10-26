@@ -1,11 +1,13 @@
 use pgrx::prelude::*;
 
 pg_module_magic!();
+pgrx::pgrx_embed!();
 
 mod anydatum;
 mod call;
 mod err;
 mod fun;
+mod srf;
 pub mod plprql;
 
 /// This module is required by `cargo pgrx tests` invocations.
