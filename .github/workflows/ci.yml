@@ -19,12 +19,12 @@ jobs:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-        pg: [ "12", "13", "14", "15", "16" ]
+        pg: [ "13", "14", "15", "16", "17", "18" ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - name: Install icu
-        if: runner.os == 'macOS' && matrix.pg == '16'
+        if: runner.os == 'macOS' && (matrix.pg == '16' || matrix.pg == '17' || matrix.pg == '18')
         run: |
           brew install icu4c
       - name: Install readline
@@ -47,12 +47,12 @@ jobs:
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
-          sudo apt-get install postgresql-server-dev-16
+          sudo apt-get install postgresql-server-dev-18
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg16 $(which pg_config)
+          cargo pgrx init --pg18 $(which pg_config)
       - name: Install PL/PRQL
         run: |
           cd plprql
@@ -93,9 +93,9 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg16 download
+          cargo pgrx init --pg18 download
       - name: Run clippy
-        run: cargo clippy --all-targets --no-default-features --features pg16 -- -D warnings
+        run: cargo clippy --all-targets --no-default-features --features pg18 -- -D warnings
   commitlint:
     runs-on: ubuntu-latest
     name: Conventional Commits
