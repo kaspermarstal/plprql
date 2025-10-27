@@ -574,13 +574,6 @@ mod tests {
             );
 
             use pgrx::JsonB;
-            use serde::{Deserialize, Serialize};
-
-            #[derive(Serialize, Deserialize, PartialEq)]
-            struct JsonbStruct {
-                key: String,
-            }
-
             let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
 
             assert!(jsonb.is_none());
