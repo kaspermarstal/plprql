@@ -178,7 +178,7 @@ mod tests {
             )?;
 
             let filtered_heights = client
-                .select("select * from filter_height(100)", None, &[])
+                .select("select filter_height(100)", None, &[])
                 .unwrap()
                 .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<&str>().unwrap())
                 .collect::<Vec<_>>();
