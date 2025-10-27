@@ -32,7 +32,7 @@ impl IntoHeapTuple for Row {
     }
 }
 
-pub(crate) fn call_table_srf(function: &Function) -> impl FnOnce() -> Option<Vec<Row>> + '_ {
+pub(crate) fn fetch_table(function: &Function) -> impl FnOnce() -> Option<Vec<Row>> + '_ {
     || -> Option<Vec<Row>> {
         let sql = prql_to_sql(&function.body()).unwrap_or_report();
         let arguments = function.arguments().unwrap_or_report();
@@ -64,9 +64,7 @@ pub(crate) fn call_table_srf(function: &Function) -> impl FnOnce() -> Option<Vec
     }
 }
 
-pub(crate) fn call_setof_srf(
-    function: &Function,
-) -> impl FnOnce() -> Option<Vec<Option<AnyDatum>>> + '_ {
+pub(crate) fn fetch_setof(function: &Function) -> impl FnOnce() -> Option<Vec<Option<AnyDatum>>> + '_ {
     || -> Option<Vec<Option<AnyDatum>>> {
         let sql = prql_to_sql(&function.body()).unwrap_or_report();
         let arguments = function.arguments().unwrap_or_report();
@@ -94,7 +92,7 @@ pub(crate) fn call_setof_srf(
     }
 }
 
-pub(crate) fn call_scalar(function: &Function) -> pg_sys::Datum {
+pub(crate) fn fetch_row(function: &Function) -> pg_sys::Datum {
     let sql = prql_to_sql(&function.body()).unwrap_or_report();
     let arguments = function.arguments().unwrap_or_report();
 

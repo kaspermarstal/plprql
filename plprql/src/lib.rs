@@ -4,11 +4,11 @@ pg_module_magic!();
 pgrx::pgrx_embed!();
 
 mod anydatum;
-mod call;
 mod err;
 mod fun;
-mod srf;
 pub mod plprql;
+mod spi;
+mod srf;
 
 /// This module is required by `cargo pgrx tests` invocations.
 /// It must be visible at the root of your extension crate.
