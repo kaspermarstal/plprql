@@ -27,6 +27,7 @@ jobs:
         if: runner.os == 'macOS' && (matrix.pg == '16' || matrix.pg == '17' || matrix.pg == '18')
         run: |
           brew install icu4c
+          echo "PKG_CONFIG_PATH=$(brew --prefix icu4c)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       - name: Install readline
         if: runner.os == 'Linux'
         run: |

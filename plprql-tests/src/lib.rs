@@ -1,7 +1,6 @@
 use pgrx::prelude::*;
 
 pg_module_magic!();
-pgrx::pgrx_embed!();
 
 #[pg_extern]
 fn pgrx_test() -> &'static str {
