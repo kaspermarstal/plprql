@@ -113,7 +113,7 @@ jobs:
           ./install.sh --pg-config $(which pg_config)
       - name: Start PostgreSQL
         run: |
-          sudo systemctl start postgresql@18-main
+          sudo pg_ctlcluster 18 main start
           /usr/lib/postgresql/18/bin/pg_isready
           # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
           sudo -u postgres /usr/lib/postgresql/18/bin/createuser -s -d -r -w runner
