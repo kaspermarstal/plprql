@@ -119,11 +119,14 @@ jobs:
           else
             sudo pg_ctlcluster 18 main start
           fi
-          /usr/lib/postgresql/18/bin/pg_isready
+          # Get the port for the cluster
+          PG_PORT=$(sudo pg_lsclusters -h | grep "^18 main" | awk '{print $3}')
+          /usr/lib/postgresql/18/bin/pg_isready -p $PG_PORT
           # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
-          sudo -u postgres /usr/lib/postgresql/18/bin/createuser -s -d -r -w runner
+          sudo -u postgres /usr/lib/postgresql/18/bin/createuser -s -d -r -w -p $PG_PORT runner
+          echo "PGPORT=$PG_PORT" >> $GITHUB_ENV
       - name: Verify install
         run: |
-          /usr/lib/postgresql/18/bin/createdb -U runner runner
-          /usr/lib/postgresql/18/bin/psql -U runner -c "create extension plprql;"
-          /usr/lib/postgresql/18/bin/psql -U runner -c "select prql_to_sql('from table');"
+          /usr/lib/postgresql/18/bin/createdb -U runner -p $PGPORT runner
+          /usr/lib/postgresql/18/bin/psql -U runner -p $PGPORT -c "create extension plprql;"
+          /usr/lib/postgresql/18/bin/psql -U runner -p $PGPORT -c "select prql_to_sql('from table');"
