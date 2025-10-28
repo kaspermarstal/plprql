@@ -108,7 +108,7 @@ Follow these steps to install PL/PRQL from one of the released deb files:
 2. Open a terminal and change to the directory where the `.deb` file was downloaded. Install the package with dpkg, e.g.:
 
    ```cmd
-   sudo dpkg -i plprql-0.1.0-postgresql-18-debian-bookworm-amd64.deb
+   sudo dpkg -i plprql-18.0.0-postgresql-18-debian-bookworm-amd64.deb
    ```
 3. If dpkg reports missing dependencies, run the following command to fix them:
    
@@ -228,7 +228,7 @@ cargo install --locked --version=0.16.1 cargo-pgrx
 cargo pgrx init --pg18 $(which pg_config)
 ```
 
-### Running Tests
+## Running Tests
 You can run tests using `cargo pgrx test pg18`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate. From the root source directory:
 
 ```cmd
@@ -237,6 +237,30 @@ cd ../plprql-tests && echo "\q" | cargo pgrx run pg18 && cargo test --no-default
 ```
 
 Supported PostgreSQL versions are `pg13`, `pg14`, `pg15`, `pg16`, `pg17`, and `pg18`.
+
+## Versioning
+
+plprql follows a PostgreSQL-aligned versioning scheme: `<pg-major>.<major>.<minor>`
+
+```
+18.0.0
+│  │ │
+│  │ └─ Minor version (bug fixes, non-breaking changes)
+│  └─── Major version (breaking changes in plprql)
+└────── PostgreSQL major version
+```
+
+The first number indicates the latest PostgreSQL major version supported by this release. The second and third numbers track plprql's own changes:
+
+- **Second number (major)**: Breaking changes in plprql's API, behavior, or SQL interface.
+- **Third number (minor)**: Bug fixes, performance improvements, and backward-compatible changes in plprql.
+
+**Examples:**
+- `18.0.0` - Initial release for PostgreSQL 18
+- `18.1.0` - Breaking change in plprql functionality (still for PostgreSQL 18)
+- `18.0.1` - Bug fix or minor improvement in plprql (for PostgreSQL 18)
+
+To check your installed plprql version, run `SELECT extversion FROM pg_extension WHERE extname = 'plprql';`.
 
 ## License
 Apache 2.0 License

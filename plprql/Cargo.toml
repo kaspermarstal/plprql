@@ -1,6 +1,6 @@
 [package]
 name = "plprql"
-version = "1.0.0"
+version = "18.0.0"
 edition = "2024"
 description = "A procedural language PostgreSQL extension for PRQL"
 authors = ["Kasper Marstal <kaspermarstal@gmail.com>"]
