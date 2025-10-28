@@ -10,6 +10,14 @@ pub struct Row {
     pub datums: Vec<Option<AnyDatum>>,
 }
 
+impl Clone for Row {
+    fn clone(&self) -> Self {
+        Row {
+            datums: self.datums.clone(),
+        }
+    }
+}
+
 impl IntoHeapTuple for Row {
     unsafe fn into_heap_tuple(self, tupdesc: *mut pg_sys::TupleDescData) -> *mut pg_sys::HeapTupleData {
         let mut datums = Vec::with_capacity(self.datums.len());
