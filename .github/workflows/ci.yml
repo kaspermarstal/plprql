@@ -64,7 +64,12 @@ jobs:
           cargo pgrx install --no-default-features --release --sudo
       - name: Start PostgreSQL
         run: |
-          sudo pg_ctlcluster 18 main start
+          # Create cluster if it doesn't exist
+          if ! sudo pg_lsclusters -h | grep -q "^18 main"; then
+            sudo pg_createcluster 18 main --start
+          else
+            sudo pg_ctlcluster 18 main start
+          fi
           /usr/lib/postgresql/18/bin/pg_isready
           # superuser (-s), can create databases (-d), can create roles (-r), no password prompt (-w) named runner
           sudo -u postgres /usr/lib/postgresql/18/bin/createuser -s -d -r -w runner
