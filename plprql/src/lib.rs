@@ -3,10 +3,11 @@ use pgrx::prelude::*;
 pg_module_magic!();
 
 mod anydatum;
-mod call;
 mod err;
 mod fun;
 pub mod plprql;
+mod spi;
+mod srf;
 
 /// This module is required by `cargo pgrx tests` invocations.
 /// It must be visible at the root of your extension crate.

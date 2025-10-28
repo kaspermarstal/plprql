@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
-        pg: [ "12", "13", "14", "15", "16" ]
+        pg: [ "13", "14", "15", "16", "17", "18" ]
         os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
     permissions:
       contents: write
@@ -96,12 +96,16 @@ jobs:
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
-          sudo apt-get install postgresql-server-dev-16
+          sudo apt-get install -y wget gnupg lsb-release
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-18 postgresql-server-dev-18
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg16 $(which pg_config)
+          cargo pgrx init --pg18 $(which pg_config)
       - name: Run install.sh
         run: |
           cd scripts
@@ -109,12 +113,20 @@ jobs:
           ./install.sh --pg-config $(which pg_config)
       - name: Start PostgreSQL
         run: |
-          sudo systemctl start postgresql.service
-          pg_isready
+          # Create cluster if it doesn't exist
+          if ! sudo pg_lsclusters -h | grep -q "^18 main"; then
+            sudo pg_createcluster 18 main --start
+          else
+            sudo pg_ctlcluster 18 main start
+          fi
+          # Get the port for the cluster
+          PG_PORT=$(sudo pg_lsclusters -h | grep "^18 main" | awk '{print $3}')
+          /usr/lib/postgresql/18/bin/pg_isready -p $PG_PORT
           # superuser (-s), can create databases (-d) and roles (-r), no password prompt (-w) named runner
-          sudo -u postgres createuser -s -d -r -w runner
+          sudo -u postgres /usr/lib/postgresql/18/bin/createuser -s -d -r -w -p $PG_PORT runner
+          echo "PGPORT=$PG_PORT" >> $GITHUB_ENV
       - name: Verify install
         run: |
-          createdb -U runner runner
-          psql -U runner -c "create extension plprql;"
-          psql -U runner -c "select prql_to_sql('from table');"
+          /usr/lib/postgresql/18/bin/createdb -U runner -p $PGPORT runner
+          /usr/lib/postgresql/18/bin/psql -U runner -p $PGPORT -c "create extension plprql;"
+          /usr/lib/postgresql/18/bin/psql -U runner -p $PGPORT -c "select prql_to_sql('from table');"

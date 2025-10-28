@@ -3,7 +3,7 @@
 
 # PRQL in PostgreSQL!
 
-PL/PRQL is a PostgreSQL extension that lets you write stored procedures with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v12-16 on Linux and macOS.
+PL/PRQL is a PostgreSQL extension that lets you write stored procedures with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v13-18 on Linux and macOS.
 
 ## What is PRQL?
 PRQL (Pipelined Relational Query Language) is an open source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept (similar to Unix pipes) that transforms data line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write. With PL/PRQL you can write Procedural Language (PL) functions (stored procedures) with PRQL instead of the traditional PL/pgSQL and combine the simplicity of PRQL with the power of stored procedures.
@@ -106,9 +106,9 @@ Follow these steps to install PL/PRQL from one of the released deb files:
 
 1. Download the deb file that matches your operating system from the [Releases](https://github.com/kaspermarstal/plprql/releases/) page.
 2. Open a terminal and change to the directory where the `.deb` file was downloaded. Install the package with dpkg, e.g.:
-   
+
    ```cmd
-   sudo dpkg -i plprql-0.1.0-postgresql-16-debian-bookworm-amd64.deb
+   sudo dpkg -i plprql-0.1.0-postgresql-18-debian-bookworm-amd64.deb
    ```
 3. If dpkg reports missing dependencies, run the following command to fix them:
    
@@ -116,7 +116,7 @@ Follow these steps to install PL/PRQL from one of the released deb files:
    sudo apt-get install -f
    ```
    
-This only requires that you have PostgreSQL installed on beforehand. Replace the major version of PostgreSQL in the deb's filename if needed. Supported versions are 12, 13, 14, 15, and 16.
+This only requires that you have PostgreSQL installed on beforehand. Replace the major version of PostgreSQL in the deb's filename if needed. Supported versions are 13, 14, 15, 16, 17, and 18.
 
 ### Install From Source
 PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgrx) framework for writing PostgreSQL extensions in Rust. This framework comes with development tools that you need to install. Follow these steps to set up your development environment:
@@ -129,16 +129,16 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
 2. Install `cargo-pgrx`.
 
     ```cmd
-    cargo install --locked --version=0.11.3 cargo-pgrx
+    cargo install --locked --version=0.16.1 cargo-pgrx
     ```
 
     The version of `cargo-pgrx` must match the version of `pgrx` in `plprql/Cargo.toml`. 
 
 3. Initialize `pgrx` for your system.
    ```cmd
-   cargo pgrx init --pg16 <PG16>
+   cargo pgrx init --pg18 <PG18>
    ```
-   where `<PG16>` is the path to your system installation's `pg_config` tool (typically `/usr/bin/pg_config`). Supported versions are PostgreSQL v12-16. You can also run `cargo pgrx init` and have `pgrx` download, install, and compile PostgreSQL v12-16. These installations are managed by `pgrx` and used for development and testing. Individual `pgrx`-managed installations can be installed using e.g. `cargo pgrx init --pg16 download`. 
+   where `<PG18>` is the path to your system installation's `pg_config` tool (typically `/usr/bin/pg_config`). Supported versions are PostgreSQL v13-18. You can also run `cargo pgrx init` and have `pgrx` download, install, and compile PostgreSQL v13-18. These installations are managed by `pgrx` and used for development and testing. Individual `pgrx`-managed installations can be installed using e.g. `cargo pgrx init --pg18 download`. 
 
 4. Clone this repository.
 
@@ -156,9 +156,9 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
    
 6. Fire up your system PostgreSQL installation and start writing functions right away! You can also try out PL/PRQL in an installation managed by `pgrx`:
    ```cmd
-   $ cargo pgrx run pg16
+   $ cargo pgrx run pg18
    psql> create extension plprql;
-   psql> create function match_stats(int) 
+   psql> create function match_stats(int)
          returns table(total_kills real, total_deaths real) as $$
            from rounds
            filter match_id == $1
@@ -172,14 +172,14 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
    
 ### Run Dockerfile
 
-The `docker/plprql.Dockerfile` builds the `postgres:16-bookworm` docker image with the extension installed. You run this Dockerfile on your own machine with the following commands:
+The `docker/plprql.Dockerfile` builds the `postgres:18-bookworm` docker image with the extension installed. You run this Dockerfile on your own machine with the following commands:
 
 ```cmd
 curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/kaspermarstal/plprql/main/docker/plprql.Dockerfile > plprql.Dockerfile
 docker build --tag 'plprql' . -f plprql.Dockerfile
 ```
 
-The dockerfile downloads a .deb file from the releases page and installs it into the official `postgres:16-bookworm` image.
+The dockerfile downloads a .deb file from the releases page and installs it into the official `postgres:18-bookworm` image.
 
 You can quickly test that the extension is installed and works as expected:
 
@@ -221,22 +221,22 @@ sudo apt-get install -y curl wget gnupg lsb-release git build-essential
 sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 sudo apt-get update
-sudo apt-get install -y postgresql-16 postgresql-server-dev-16
+sudo apt-get install -y postgresql-18 postgresql-server-dev-18
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source ~/.bashrc
-cargo install --locked --version=0.11.3 cargo-pgrx
-cargo pgrx init --pg16 $(which pg_config)
+cargo install --locked --version=0.16.1 cargo-pgrx
+cargo pgrx init --pg18 $(which pg_config)
 ```
 
-### Running Tests 
-You can run tests using `cargo pgrx test pg16`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate. From the root source directory:
+### Running Tests
+You can run tests using `cargo pgrx test pg18`. Unit tests are in the main `plprql` crate while integration tests are in the `plprql-tests` crate. From the root source directory:
 
 ```cmd
-cd plprql && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
-cd ../plprql-tests && echo "\q" | cargo pgrx run pg16 && cargo test --no-default-features --features pg16
+cd plprql && echo "\q" | cargo pgrx run pg18 && cargo test --no-default-features --features pg18
+cd ../plprql-tests && echo "\q" | cargo pgrx run pg18 && cargo test --no-default-features --features pg18
 ```
 
-Supported PostgreSQL versions are `pg12`, `pg13`, `pg14`, `pg15`, and `pg16`.
+Supported PostgreSQL versions are `pg13`, `pg14`, `pg15`, `pg16`, `pg17`, and `pg18`.
 
 ## License
 Apache 2.0 License

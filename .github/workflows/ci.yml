@@ -19,14 +19,15 @@ jobs:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-        pg: [ "12", "13", "14", "15", "16" ]
+        pg: [ "13", "14", "15", "16", "17", "18" ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - name: Install icu
-        if: runner.os == 'macOS' && matrix.pg == '16'
+        if: runner.os == 'macOS' && (matrix.pg == '16' || matrix.pg == '17' || matrix.pg == '18')
         run: |
           brew install icu4c
+          echo "PKG_CONFIG_PATH=$(brew --prefix icu4c)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       - name: Install readline
         if: runner.os == 'Linux'
         run: |
@@ -47,27 +48,39 @@ jobs:
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
-          sudo apt-get install postgresql-server-dev-16
+          sudo apt-get install -y wget gnupg lsb-release
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-18 postgresql-server-dev-18
       - name: Install cargo-pgrx
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg16 $(which pg_config)
+          cargo pgrx init --pg18 $(which pg_config)
       - name: Install PL/PRQL
         run: |
           cd plprql
           cargo pgrx install --no-default-features --release --sudo
       - name: Start PostgreSQL
         run: |
-          sudo systemctl start postgresql.service
-          pg_isready
+          # Create cluster if it doesn't exist
+          if ! sudo pg_lsclusters -h | grep -q "^18 main"; then
+            sudo pg_createcluster 18 main --start
+          else
+            sudo pg_ctlcluster 18 main start
+          fi
+          # Get the port for the cluster
+          PG_PORT=$(sudo pg_lsclusters -h | grep "^18 main" | awk '{print $3}')
+          /usr/lib/postgresql/18/bin/pg_isready -p $PG_PORT
           # superuser (-s), can create databases (-d), can create roles (-r), no password prompt (-w) named runner
-          sudo -u postgres createuser -s -d -r -w runner
+          sudo -u postgres /usr/lib/postgresql/18/bin/createuser -s -d -r -w -p $PG_PORT runner
+          echo "PGPORT=$PG_PORT" >> $GITHUB_ENV
       - name: Verify install
         run: |
-          createdb -U runner runner
-          psql -U runner -c "create extension plprql;"
-          psql -U runner -c "select prql_to_sql('from table');"
+          /usr/lib/postgresql/18/bin/createdb -U runner -p $PGPORT runner
+          /usr/lib/postgresql/18/bin/psql -U runner -p $PGPORT -c "create extension plprql;"
+          /usr/lib/postgresql/18/bin/psql -U runner -p $PGPORT -c "select prql_to_sql('from table');"
   rustfmt:
     runs-on: ubuntu-latest
     steps:
@@ -76,13 +89,6 @@ jobs:
       - name: Run rustfmt
         run: cargo fmt -- --check
   rust-clippy:
-    # TODO: Fix invalid `pg11` feature. Where does it come from? Not from our code. It worked previously
-    # error: unexpected `cfg` condition value: `pg11`
-    #  --> plprql/src/lib.rs:3:1
-    #   |
-    # 3 | pg_module_magic!();
-    #   | ^^^^^^^^^^^^^^^^^^
-    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -93,9 +99,9 @@ jobs:
         run: |
           PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version')
           cargo install --locked --version=$PGRX_VERSION cargo-pgrx --debug --force
-          cargo pgrx init --pg16 download
+          cargo pgrx init --pg18 download
       - name: Run clippy
-        run: cargo clippy --all-targets --no-default-features --features pg16 -- -D warnings
+        run: cargo clippy --all-targets --no-default-features --features pg18 -- -D warnings
   commitlint:
     runs-on: ubuntu-latest
     name: Conventional Commits
