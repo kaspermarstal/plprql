@@ -16,7 +16,7 @@ crate-type = ["cdylib", "lib"]
 
 [[bin]]
 name = "pgrx_embed_plprql"
-path = "./src/bin/pgrx_embed.rs"
+path = "src/bin/pgrx_embed.rs"
 
 [features]
 default = ["pg18"]
