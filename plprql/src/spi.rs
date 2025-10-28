@@ -4,7 +4,7 @@ use crate::plprql::prql_to_sql;
 use pgrx::pg_return_null;
 use pgrx::pg_sys::panic::ErrorReportable;
 use pgrx::prelude::*;
-use pgrx::{pg_sys, IntoDatum, IntoHeapTuple};
+use pgrx::{IntoDatum, IntoHeapTuple, pg_sys};
 
 pub struct Row {
     pub datums: Vec<Option<AnyDatum>>,
