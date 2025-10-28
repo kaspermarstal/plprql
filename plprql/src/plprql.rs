@@ -37,13 +37,13 @@ extension_sql!(
     bootstrap // This ensures it runs early, before other SQL
 );
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn pg_finfo_plprql_call_handler() -> &'static pg_sys::Pg_finfo_record {
     const V1_API: pg_sys::Pg_finfo_record = pg_sys::Pg_finfo_record { api_version: 1 };
     &V1_API
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[pg_guard]
 pub extern "C-unwind" fn plprql_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let function = match Function::from_call_info(fcinfo) {
