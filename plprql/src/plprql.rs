@@ -8,7 +8,7 @@ use prqlc::{compile, sql::Dialect, DisplayOptions, Options, Target};
 // Allows the user to compile PRQL from SQL
 #[pg_extern]
 pub fn prql_to_sql(prql: &str) -> PlprqlResult<String> {
-    let opts = &Options {
+    let options = &Options {
         format: false,
         target: Target::Sql(Some(Dialect::Postgres)),
         signature_comment: false,
@@ -16,7 +16,7 @@ pub fn prql_to_sql(prql: &str) -> PlprqlResult<String> {
         display: DisplayOptions::Plain,
     };
 
-    compile(prql, opts).map_err(PlprqlError::PrqlError)
+    compile(prql, options).map_err(PlprqlError::PrqlError)
 }
 
 // Allows the user to define PostgreSQL functions with PRQL bodies.
@@ -34,16 +34,16 @@ extension_sql!(
     returns language_handler
     language C strict as 'MODULE_PATHNAME', 'plprql_call_handler';",
     name = "plprql_call_handler_sql",
-    bootstrap // This ensures it runs early, before other SQL
+    bootstrap // Ensure this runs before other SQL
 );
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn pg_finfo_plprql_call_handler() -> &'static pg_sys::Pg_finfo_record {
     const V1_API: pg_sys::Pg_finfo_record = pg_sys::Pg_finfo_record { api_version: 1 };
     &V1_API
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[pg_guard]
 pub extern "C-unwind" fn plprql_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let function = match Function::from_call_info(fcinfo) {

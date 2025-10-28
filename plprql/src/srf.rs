@@ -154,11 +154,3 @@ where
         }
     }
 }
-
-impl Clone for Row {
-    fn clone(&self) -> Self {
-        Row {
-            datums: self.datums.clone(),
-        }
-    }
-}
