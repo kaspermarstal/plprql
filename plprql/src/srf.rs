@@ -1,6 +1,6 @@
 use crate::anydatum::AnyDatum;
 use crate::spi::Row;
-use pgrx::{pg_sys, IntoDatum, IntoHeapTuple};
+use pgrx::{IntoDatum, IntoHeapTuple, pg_sys};
 
 pub struct TableSrfResults {
     rows: Vec<Row>,

@@ -854,7 +854,12 @@ mod tests {
                 &[],
             )?;
 
-            assert_eq!(sql.first().get_one::<&str>(), Ok(Some("WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0")));
+            assert_eq!(
+                sql.first().get_one::<&str>(),
+                Ok(Some(
+                    "WITH table_0 AS (SELECT player, COALESCE(SUM(kills), 0) AS _expr_0, COALESCE(SUM(deaths), 0) AS _expr_1 FROM matches WHERE match_id = $1 GROUP BY player) SELECT player, (_expr_0 * 1.0 / _expr_1) AS kd_ratio FROM table_0 WHERE _expr_1 > 0"
+                ))
+            );
 
             let player1_kills = client
                 .select(

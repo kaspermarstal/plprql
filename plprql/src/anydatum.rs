@@ -18,8 +18,9 @@
 // - Renamed Cell to AnyDatum
 
 use pgrx::{
+    PgBuiltInOids, PgOid,
     datum::{AnyNumeric, Date, FromDatum, IntoDatum, JsonB, Timestamp},
-    fcinfo, pg_sys, PgBuiltInOids, PgOid,
+    fcinfo, pg_sys,
 };
 use std::ffi::CStr;
 use std::fmt;
