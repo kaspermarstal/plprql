@@ -102,10 +102,3 @@ jobs:
           cargo pgrx init --pg18 download
       - name: Run clippy
         run: cargo clippy --all-targets --no-default-features --features pg18 -- -D warnings
-  commitlint:
-    runs-on: ubuntu-latest
-    name: Conventional Commits
-    steps:
-      - name: Run commitlint
-        uses: opensource-nepal/commitlint@v1
-
