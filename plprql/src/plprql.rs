@@ -3,7 +3,7 @@ use crate::fun::{Function, Return};
 use crate::spi::{fetch_row, fetch_setof, fetch_table};
 use crate::srf::{setof_srf_next, table_srf_next};
 use pgrx::prelude::*;
-use prqlc::{DisplayOptions, Options, Target, compile, sql::Dialect};
+use prqlc::{compile, sql::Dialect, DisplayOptions, Options, Target};
 
 // Allows the user to compile PRQL from SQL
 #[pg_extern]
