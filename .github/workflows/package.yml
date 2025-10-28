@@ -19,7 +19,7 @@ jobs:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         pg: [ "13", "14", "15", "16", "17", "18" ]
-        os: [ { distribution: "debian", release: "bullseye" }, { distribution: "debian", release: "bookworm" } ]
+        os: [ { distribution: "debian", release: "bookworm" }, { distribution: "debian", release: "trixie" } ]
     permissions:
       contents: write
     steps:
