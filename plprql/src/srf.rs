@@ -1,6 +1,6 @@
 use crate::anydatum::AnyDatum;
 use crate::spi::Row;
-use pgrx::callconv::{FcInfo, ReturnSetInfoWrapper};
+use pgrx::callconv::FcInfo;
 use pgrx::{IntoDatum, IntoHeapTuple, pg_sys};
 
 pub struct TableSrfResults {
@@ -47,26 +47,12 @@ unsafe fn drop_srf_state<T>(context: &mut pg_sys::FuncCallContext) {
     }
 }
 
-/// End SRF and return completion datum
-unsafe fn end_srf(
-    fcinfo: pg_sys::FunctionCallInfo,
-    context: &mut pg_sys::FuncCallContext,
-    return_set_info: &mut ReturnSetInfoWrapper,
-) -> pg_sys::Datum {
-    unsafe {
-        pg_sys::end_MultiFuncCall(fcinfo, context);
-        return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprEndResult);
-        pg_sys::Datum::from(0)
-    }
-}
-
 pub unsafe fn table_srf_next<F>(function_call_info: pg_sys::FunctionCallInfo, fetch_results: F) -> pg_sys::Datum
 where
     F: FnOnce() -> Option<Vec<Row>>,
 {
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
-        let mut return_set_info = fcinfo.get_result_info();
 
         let function_context = match fcinfo.srf_is_initialized() {
             // Next call
@@ -98,19 +84,19 @@ where
 
         if is_done {
             drop_srf_state::<TableSrfResults>(function_context);
-            return end_srf(function_call_info, function_context, &mut return_set_info);
+            fcinfo.srf_return_done();
+            return pg_sys::Datum::from(0);
         }
 
         // Return next row
         let function_results = get_srf_state::<TableSrfResults>(function_context);
         let row = &function_results.rows[function_context.call_cntr as usize];
-        function_context.call_cntr += 1;
 
         // Convert to datum
         let heap_tuple = row.clone().into_heap_tuple(function_context.tuple_desc);
         let datum = pg_sys::HeapTupleHeaderGetDatum((*heap_tuple).t_data);
 
-        return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprMultipleResult);
+        fcinfo.srf_return_next();
         fcinfo.return_raw_datum(datum).sans_lifetime()
     }
 }
@@ -121,7 +107,6 @@ where
 {
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
-        let mut return_set_info = fcinfo.get_result_info();
 
         let function_context = match fcinfo.srf_is_initialized() {
             // Next call
@@ -131,6 +116,8 @@ where
                 let function_context = fcinfo.init_multi_func_call();
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
+                // Set return mode for SETOF functions
+                let mut return_set_info = fcinfo.get_result_info();
                 return_set_info.set_return_mode(pg_sys::SetFunctionReturnMode::SFRM_ValuePerCall);
 
                 // Setup state
@@ -152,13 +139,13 @@ where
 
         if is_done {
             drop_srf_state::<SetOfSrfResults>(function_context);
-            return end_srf(function_call_info, function_context, &mut return_set_info);
+            fcinfo.srf_return_done();
+            return pg_sys::Datum::from(0);
         }
 
         // Return next record
         let function_results = get_srf_state::<SetOfSrfResults>(function_context);
         let record = &function_results.values[function_context.call_cntr as usize];
-        function_context.call_cntr += 1;
 
         // Convert to datum
         let datum = match record {
@@ -169,7 +156,7 @@ where
             None => fcinfo.return_null(),
         };
 
-        return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprMultipleResult);
+        fcinfo.srf_return_next();
         datum.sans_lifetime()
     }
 }
