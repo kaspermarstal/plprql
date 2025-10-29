@@ -26,7 +26,7 @@ unsafe fn init_tuple_descriptor(fcinfo: &mut FcInfo) -> *mut pg_sys::TupleDescDa
 }
 
 /// Get function context for subsequent SRF calls
-unsafe fn get_function_context(fcinfo: &FcInfo) -> &mut pg_sys::FuncCallContext {
+unsafe fn get_function_context<'fcx>(fcinfo: &FcInfo<'fcx>) -> &'fcx mut pg_sys::FuncCallContext {
     unsafe { &mut *pg_sys::per_MultiFuncCall(fcinfo.as_mut_ptr()) }
 }
 
