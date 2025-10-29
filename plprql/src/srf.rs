@@ -12,9 +12,11 @@ pub struct SetOfSrfResults {
 }
 
 /// Initialize tuple descriptor for table-returning functions
-unsafe fn init_tuple_descriptor(fcinfo: pg_sys::FunctionCallInfo) -> *mut pg_sys::TupleDescData {
+unsafe fn init_tuple_descriptor(fcinfo: &FcInfo) -> *mut pg_sys::TupleDescData {
     let mut tupdesc: *mut pg_sys::TupleDescData = std::ptr::null_mut();
-    let type_call_result = unsafe { pg_sys::get_call_result_type(fcinfo, std::ptr::null_mut(), &mut tupdesc) };
+    let type_call_result = unsafe {
+        pg_sys::get_call_result_type(fcinfo.as_mut_ptr(), std::ptr::null_mut(), &mut tupdesc)
+    };
 
     if type_call_result != pg_sys::TypeFuncClass::TYPEFUNC_COMPOSITE {
         pgrx::error!("function returning record called in context that cannot accept type record");
@@ -22,6 +24,11 @@ unsafe fn init_tuple_descriptor(fcinfo: pg_sys::FunctionCallInfo) -> *mut pg_sys
 
     unsafe { pg_sys::BlessTupleDesc(tupdesc) };
     tupdesc
+}
+
+/// Get function context for subsequent SRF calls
+unsafe fn get_func_context(fcinfo: &FcInfo) -> &mut pg_sys::FuncCallContext {
+    unsafe { &mut *pg_sys::per_MultiFuncCall(fcinfo.as_mut_ptr()) }
 }
 
 pub unsafe fn table_srf_next<F>(function_call_info: pg_sys::FunctionCallInfo, fetch_results: F) -> pg_sys::Datum
@@ -40,7 +47,7 @@ where
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
                 // Setup tuple descriptor
-                function_context.tuple_desc = init_tuple_descriptor(function_call_info);
+                function_context.tuple_desc = init_tuple_descriptor(&fcinfo);
 
                 // Setup state
                 if let Some(rows) = fetch_results() {
@@ -55,7 +62,7 @@ where
                 function_context
             }
             // Next call
-            false => &mut *pg_sys::per_MultiFuncCall(function_call_info),
+            false => get_func_context(&fcinfo),
         };
 
         // Return if no rows are left
@@ -116,7 +123,7 @@ where
                 function_context
             }
             // Next call
-            false => &mut *pg_sys::per_MultiFuncCall(function_call_info),
+            false => get_func_context(&fcinfo),
         };
 
         // Return if no rows are left
