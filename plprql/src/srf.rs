@@ -1,6 +1,6 @@
 use crate::anydatum::AnyDatum;
 use crate::spi::Row;
-use pgrx::callconv::FcInfo;
+use pgrx::callconv::{FcInfo, ReturnSetInfoWrapper};
 use pgrx::{IntoDatum, IntoHeapTuple, pg_sys};
 
 pub struct TableSrfResults {
@@ -12,10 +12,14 @@ pub struct SetOfSrfResults {
 }
 
 /// Initialize tuple descriptor for table-returning functions
-unsafe fn init_tuple_descriptor(fcinfo: &FcInfo) -> *mut pg_sys::TupleDescData {
+unsafe fn init_tuple_descriptor(fcinfo: &mut FcInfo) -> *mut pg_sys::TupleDescData {
     let mut tupdesc: *mut pg_sys::TupleDescData = std::ptr::null_mut();
     let type_call_result = unsafe {
-        pg_sys::get_call_result_type(fcinfo.as_mut_ptr(), std::ptr::null_mut(), &mut tupdesc)
+        pg_sys::get_call_result_type(
+            fcinfo.as_mut_ptr(),
+            std::ptr::null_mut(),
+            &mut tupdesc
+        )
     };
 
     if type_call_result != pg_sys::TypeFuncClass::TYPEFUNC_COMPOSITE {
@@ -27,8 +31,33 @@ unsafe fn init_tuple_descriptor(fcinfo: &FcInfo) -> *mut pg_sys::TupleDescData {
 }
 
 /// Get function context for subsequent SRF calls
-unsafe fn get_func_context(fcinfo: &FcInfo) -> &mut pg_sys::FuncCallContext {
+unsafe fn get_function_context(fcinfo: &FcInfo) -> &mut pg_sys::FuncCallContext {
     unsafe { &mut *pg_sys::per_MultiFuncCall(fcinfo.as_mut_ptr()) }
+}
+
+/// Get typed state from function context
+unsafe fn get_srf_state<T>(context: &pg_sys::FuncCallContext) -> &mut T {
+    unsafe { &mut *(context.user_fctx as *mut T) }
+}
+
+/// Drop SRF state if present
+unsafe fn drop_srf_state<T>(context: &mut pg_sys::FuncCallContext) {
+    if !context.user_fctx.is_null() {
+        unsafe { drop(Box::from_raw(context.user_fctx as *mut T)) };
+    }
+}
+
+/// End SRF and return completion datum
+unsafe fn end_srf(
+    fcinfo: pg_sys::FunctionCallInfo,
+    context: &mut pg_sys::FuncCallContext,
+    return_set_info: &mut ReturnSetInfoWrapper,
+) -> pg_sys::Datum {
+    unsafe {
+        pg_sys::end_MultiFuncCall(fcinfo, context);
+        return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprEndResult);
+        pg_sys::Datum::from(0)
+    }
 }
 
 pub unsafe fn table_srf_next<F>(function_call_info: pg_sys::FunctionCallInfo, fetch_results: F) -> pg_sys::Datum
@@ -38,16 +67,17 @@ where
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
         let mut return_set_info = fcinfo.get_result_info();
-        let is_first_call = !fcinfo.srf_is_initialized();
 
-        let function_context = match is_first_call {
+        let function_context = match fcinfo.srf_is_initialized() {
+            // Next call
+            true => get_function_context(&fcinfo),
             // First call
-            true => {
+            false => {
                 let function_context = fcinfo.init_multi_func_call();
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
                 // Setup tuple descriptor
-                function_context.tuple_desc = init_tuple_descriptor(&fcinfo);
+                function_context.tuple_desc = init_tuple_descriptor(&mut fcinfo);
 
                 // Setup state
                 if let Some(rows) = fetch_results() {
@@ -61,26 +91,18 @@ where
                 pg_sys::MemoryContextSwitchTo(old_context);
                 function_context
             }
-            // Next call
-            false => get_func_context(&fcinfo),
         };
 
-        // Return if no rows are left
-        let has_more_rows = function_context.call_cntr >= function_context.max_calls;
+        // Check if we've returned all rows
+        let is_done = function_context.call_cntr >= function_context.max_calls;
 
-        if has_more_rows {
-            if !function_context.user_fctx.is_null() {
-                let function_results = Box::from_raw(function_context.user_fctx as *mut TableSrfResults);
-                drop(function_results);
-            }
-
-            pg_sys::end_MultiFuncCall(function_call_info, function_context);
-            return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprEndResult);
-            return pg_sys::Datum::from(0);
+        if is_done {
+            drop_srf_state::<TableSrfResults>(function_context);
+            return end_srf(function_call_info, function_context, &mut return_set_info);
         }
 
         // Return next row
-        let function_results = &mut *(function_context.user_fctx as *mut TableSrfResults);
+        let function_results = get_srf_state::<TableSrfResults>(function_context);
         let row = &function_results.rows[function_context.call_cntr as usize];
         function_context.call_cntr += 1;
 
@@ -100,11 +122,12 @@ where
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
         let mut return_set_info = fcinfo.get_result_info();
-        let is_first_call = !fcinfo.srf_is_initialized();
 
-        let function_context = match is_first_call {
+        let function_context = match fcinfo.srf_is_initialized() {
+            // Next call
+            true => get_function_context(&fcinfo),
             // First call
-            true => {
+            false => {
                 let function_context = fcinfo.init_multi_func_call();
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
@@ -122,26 +145,18 @@ where
                 pg_sys::MemoryContextSwitchTo(old_context);
                 function_context
             }
-            // Next call
-            false => get_func_context(&fcinfo),
         };
 
-        // Return if no rows are left
-        let has_more_rows = function_context.call_cntr >= function_context.max_calls;
+        // Check if we've returned all rows
+        let is_done = function_context.call_cntr >= function_context.max_calls;
 
-        if has_more_rows {
-            if !function_context.user_fctx.is_null() {
-                let function_results = Box::from_raw(function_context.user_fctx as *mut SetOfSrfResults);
-                drop(function_results);
-            }
-
-            pg_sys::end_MultiFuncCall(function_call_info, function_context);
-            return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprEndResult);
-            return pg_sys::Datum::from(0);
+        if is_done {
+            drop_srf_state::<SetOfSrfResults>(function_context);
+            return end_srf(function_call_info, function_context, &mut return_set_info);
         }
 
         // Return next record
-        let function_results = &mut *(function_context.user_fctx as *mut SetOfSrfResults);
+        let function_results = get_srf_state::<SetOfSrfResults>(function_context);
         let record = &function_results.values[function_context.call_cntr as usize];
         function_context.call_cntr += 1;
 
