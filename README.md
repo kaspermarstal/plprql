@@ -240,7 +240,7 @@ Supported PostgreSQL versions are `pg13`, `pg14`, `pg15`, `pg16`, `pg17`, and `p
 
 ## Versioning
 
-PL/PRQL's versioning schema follows PostgreSQL's major version: `<pg-major>.<major>.<minor>`:
+PL/PRQL's versioning scheme follows PostgreSQL's major version: `<pg-major>.<major>.<minor>`:
 
 ```
 18.0.0
@@ -250,7 +250,7 @@ PL/PRQL's versioning schema follows PostgreSQL's major version: `<pg-major>.<maj
  └───── PostgreSQL major version
 ```
 
-The first number indicates the latest PostgreSQL major version supported by this release. The second and third numbers track plprql's own changes:
+The first number indicates the latest PostgreSQL major version supported by this release. The second and third numbers track PL/PRQL's own changes:
 
 - **Second number (major)**: Breaking changes in PL/PRQL's API, behavior, or SQL interface.
 - **Third number (minor)**: Bug fixes, performance improvements, and backward-compatible changes in PL/PRQL.
