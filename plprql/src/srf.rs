@@ -30,6 +30,7 @@ where
 {
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
+        let mut return_set_info = fcinfo.get_result_info();
         let is_first_call = !fcinfo.srf_is_initialized();
 
         let function_context = match is_first_call {
@@ -66,19 +67,21 @@ where
                 drop(function_results);
             }
 
-            fcinfo.srf_return_done();
+            pg_sys::end_MultiFuncCall(function_call_info, function_context);
+            return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprEndResult);
             return pg_sys::Datum::from(0);
         }
 
         // Return next row
         let function_results = &mut *(function_context.user_fctx as *mut TableSrfResults);
         let row = &function_results.rows[function_context.call_cntr as usize];
+        function_context.call_cntr += 1;
 
         // Convert to datum
         let heap_tuple = row.clone().into_heap_tuple(function_context.tuple_desc);
         let datum = pg_sys::HeapTupleHeaderGetDatum((*heap_tuple).t_data);
 
-        fcinfo.srf_return_next();
+        return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprMultipleResult);
         fcinfo.return_raw_datum(datum).sans_lifetime()
     }
 }
@@ -89,6 +92,7 @@ where
 {
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
+        let mut return_set_info = fcinfo.get_result_info();
         let is_first_call = !fcinfo.srf_is_initialized();
 
         let function_context = match is_first_call {
@@ -97,7 +101,6 @@ where
                 let function_context = fcinfo.init_multi_func_call();
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
-                let mut return_set_info = fcinfo.get_result_info();
                 return_set_info.set_return_mode(pg_sys::SetFunctionReturnMode::SFRM_ValuePerCall);
 
                 // Setup state
@@ -125,13 +128,15 @@ where
                 drop(function_results);
             }
 
-            fcinfo.srf_return_done();
+            pg_sys::end_MultiFuncCall(function_call_info, function_context);
+            return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprEndResult);
             return pg_sys::Datum::from(0);
         }
 
         // Return next record
         let function_results = &mut *(function_context.user_fctx as *mut SetOfSrfResults);
         let record = &function_results.values[function_context.call_cntr as usize];
+        function_context.call_cntr += 1;
 
         // Convert to datum
         let datum = match record {
@@ -142,7 +147,7 @@ where
             None => fcinfo.return_null(),
         };
 
-        fcinfo.srf_return_next();
+        return_set_info.set_is_done(pg_sys::ExprDoneCond::ExprMultipleResult);
         datum.sans_lifetime()
     }
 }
