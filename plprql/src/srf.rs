@@ -14,13 +14,8 @@ pub struct SetOfSrfResults {
 /// Initialize tuple descriptor for table-returning functions
 unsafe fn init_tuple_descriptor(fcinfo: &mut FcInfo) -> *mut pg_sys::TupleDescData {
     let mut tupdesc: *mut pg_sys::TupleDescData = std::ptr::null_mut();
-    let type_call_result = unsafe {
-        pg_sys::get_call_result_type(
-            fcinfo.as_mut_ptr(),
-            std::ptr::null_mut(),
-            &mut tupdesc
-        )
-    };
+    let type_call_result =
+        unsafe { pg_sys::get_call_result_type(fcinfo.as_mut_ptr(), std::ptr::null_mut(), &mut tupdesc) };
 
     if type_call_result != pg_sys::TypeFuncClass::TYPEFUNC_COMPOSITE {
         pgrx::error!("function returning record called in context that cannot accept type record");
