@@ -30,15 +30,24 @@ unsafe fn get_function_context<'fcx>(fcinfo: &FcInfo<'fcx>) -> &'fcx mut pg_sys:
     unsafe { &mut *pg_sys::per_MultiFuncCall(fcinfo.as_mut_ptr()) }
 }
 
-/// Get typed state from function context
-unsafe fn get_srf_state<T>(context: &mut pg_sys::FuncCallContext) -> &mut T {
-    unsafe { &mut *(context.user_fctx as *mut T) }
+/// Get next row from table SRF results
+unsafe fn get_next_row(srf_context: &mut pg_sys::FuncCallContext) -> &Row {
+    let index = srf_context.call_cntr as usize;
+    let results = unsafe { &mut *(srf_context.user_fctx as *mut TableSrfResults) };
+    &results.rows[index]
+}
+
+/// Get next record from SETOF SRF results
+unsafe fn get_next_record(srf_context: &mut pg_sys::FuncCallContext) -> &Option<AnyDatum> {
+    let index = srf_context.call_cntr as usize;
+    let results = unsafe { &mut *(srf_context.user_fctx as *mut SetOfSrfResults) };
+    &results.values[index]
 }
 
 /// Drop SRF state if present
-unsafe fn drop_srf_state<T>(context: &mut pg_sys::FuncCallContext) {
-    if !context.user_fctx.is_null() {
-        unsafe { drop(Box::from_raw(context.user_fctx as *mut T)) };
+unsafe fn drop_srf_state<T>(srf_context: &mut pg_sys::FuncCallContext) {
+    if !srf_context.user_fctx.is_null() {
+        unsafe { drop(Box::from_raw(srf_context.user_fctx as *mut T)) };
     }
 }
 
@@ -49,47 +58,45 @@ where
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
 
-        let function_context = match fcinfo.srf_is_initialized() {
+        let srf_context = match fcinfo.srf_is_initialized() {
             // Next call
             true => get_function_context(&fcinfo),
             // First call
             false => {
-                let function_context = fcinfo.init_multi_func_call();
-                let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
+                let srf_context = fcinfo.init_multi_func_call();
+                let old_context = pg_sys::MemoryContextSwitchTo(srf_context.multi_call_memory_ctx);
 
                 // Set return mode
-                function_context.tuple_desc = init_tuple_descriptor(&mut fcinfo);
+                srf_context.tuple_desc = init_tuple_descriptor(&mut fcinfo);
 
                 // Setup state
                 if let Some(rows) = fetch_results() {
                     let function_results = Box::new(TableSrfResults { rows });
-                    function_context.max_calls = function_results.rows.len() as u64;
-                    function_context.user_fctx = Box::into_raw(function_results) as *mut std::ffi::c_void;
+                    srf_context.max_calls = function_results.rows.len() as u64;
+                    srf_context.user_fctx = Box::into_raw(function_results) as *mut std::ffi::c_void;
                 } else {
-                    function_context.max_calls = 0;
+                    srf_context.max_calls = 0;
                 }
 
                 pg_sys::MemoryContextSwitchTo(old_context);
-                function_context
+                srf_context
             }
         };
 
         // Check if we've returned all rows
-        let is_done = function_context.call_cntr >= function_context.max_calls;
+        let is_done = srf_context.call_cntr >= srf_context.max_calls;
 
         if is_done {
-            drop_srf_state::<TableSrfResults>(function_context);
+            drop_srf_state::<TableSrfResults>(srf_context);
             fcinfo.srf_return_done();
             return pg_sys::Datum::from(0);
         }
 
         // Get next result
-        let index = function_context.call_cntr as usize;
-        let function_results = get_srf_state::<TableSrfResults>(function_context);
-        let row = &function_results.rows[index];
+        let row = get_next_row(srf_context);
 
         // Convert to datum
-        let heap_tuple = row.clone().into_heap_tuple(function_context.tuple_desc);
+        let heap_tuple = row.clone().into_heap_tuple(srf_context.tuple_desc);
         let datum = pg_sys::HeapTupleHeaderGetDatum((*heap_tuple).t_data);
 
         fcinfo.srf_return_next();
@@ -104,13 +111,13 @@ where
     unsafe {
         let mut fcinfo = FcInfo::from_ptr(function_call_info);
 
-        let function_context = match fcinfo.srf_is_initialized() {
+        let srf_context = match fcinfo.srf_is_initialized() {
             // Next call
             true => get_function_context(&fcinfo),
             // First call
             false => {
-                let function_context = fcinfo.init_multi_func_call();
-                let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
+                let srf_context = fcinfo.init_multi_func_call();
+                let old_context = pg_sys::MemoryContextSwitchTo(srf_context.multi_call_memory_ctx);
 
                 // Set return mode
                 let mut return_set_info = fcinfo.get_result_info();
@@ -119,30 +126,28 @@ where
                 // Setup state
                 if let Some(values) = fetch_results() {
                     let function_state = Box::new(SetOfSrfResults { values });
-                    function_context.max_calls = function_state.values.len() as u64;
-                    function_context.user_fctx = Box::into_raw(function_state) as *mut std::ffi::c_void;
+                    srf_context.max_calls = function_state.values.len() as u64;
+                    srf_context.user_fctx = Box::into_raw(function_state) as *mut std::ffi::c_void;
                 } else {
-                    function_context.max_calls = 0;
+                    srf_context.max_calls = 0;
                 }
 
                 pg_sys::MemoryContextSwitchTo(old_context);
-                function_context
+                srf_context
             }
         };
 
         // Check if we've returned all rows
-        let is_done = function_context.call_cntr >= function_context.max_calls;
+        let is_done = srf_context.call_cntr >= srf_context.max_calls;
 
         if is_done {
-            drop_srf_state::<SetOfSrfResults>(function_context);
+            drop_srf_state::<SetOfSrfResults>(srf_context);
             fcinfo.srf_return_done();
             return pg_sys::Datum::from(0);
         }
 
         // Get next result
-        let index = function_context.call_cntr as usize;
-        let function_results = get_srf_state::<SetOfSrfResults>(function_context);
-        let record = &function_results.values[index];
+        let record = get_next_record(srf_context);
 
         // Convert to datum
         let datum = match record {
