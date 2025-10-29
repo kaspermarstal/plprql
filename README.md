@@ -6,7 +6,7 @@
 PL/PRQL is a PostgreSQL extension that lets you write stored procedures with [PRQL](https://prql-lang.org/). The extension supports PostgreSQL v13-18 on Linux and macOS.
 
 ## What is PRQL?
-PRQL (Pipelined Relational Query Language) is an open source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept (similar to Unix pipes) that transforms data line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write. With PL/PRQL you can write Procedural Language (PL) functions (stored procedures) with PRQL instead of the traditional PL/pgSQL and combine the simplicity of PRQL with the power of stored procedures.
+PRQL (Pipelined Relational Query Language) is an open source query language for data manipulation and analysis that compiles to SQL. PRQL introduces a pipeline concept similar to Unix pipes that transforms data line-by-line. The sequential series of transformations reduces the complexity often encountered with nested SQL queries and makes your data manipulation logic easier to read and write. With PL/PRQL you can write Procedural Language (PL) functions with PRQL instead of the traditional PL/pgSQL, combining the simplicity of PRQL with the power of stored procedures.
 
 ## Key features
 - [Write functions with PRQL](#write-functions-with-prql) - Useful for large analytical queries
@@ -186,7 +186,7 @@ You can quickly test that the extension is installed and works as expected:
 ```cmd
 CONTAINER_ID=$(docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust plprql)
 docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
-docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql1('from table')"
+docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table')"
 ```
 
 ### Run Shell Script
@@ -240,25 +240,25 @@ Supported PostgreSQL versions are `pg13`, `pg14`, `pg15`, `pg16`, `pg17`, and `p
 
 ## Versioning
 
-plprql follows a PostgreSQL-aligned versioning scheme: `<pg-major>.<major>.<minor>`
+PL/PRQL's versioning schema follows PostgreSQL's major version: `<pg-major>.<major>.<minor>`:
 
 ```
 18.0.0
-│  │ │
-│  │ └─ Minor version (bug fixes, non-breaking changes)
-│  └─── Major version (breaking changes in plprql)
-└────── PostgreSQL major version
+ │ │ │
+ │ │ └─ Minor version (non-breaking changes in PL/PRQL)
+ │ └─── Major version (breaking changes in PL/PRQL)
+ └───── PostgreSQL major version
 ```
 
 The first number indicates the latest PostgreSQL major version supported by this release. The second and third numbers track plprql's own changes:
 
-- **Second number (major)**: Breaking changes in plprql's API, behavior, or SQL interface.
-- **Third number (minor)**: Bug fixes, performance improvements, and backward-compatible changes in plprql.
+- **Second number (major)**: Breaking changes in PL/PRQL's API, behavior, or SQL interface.
+- **Third number (minor)**: Bug fixes, performance improvements, and backward-compatible changes in PL/PRQL.
 
 **Examples:**
-- `18.0.0` - Initial release for PostgreSQL 18
-- `18.1.0` - Breaking change in plprql functionality (still for PostgreSQL 18)
-- `18.0.1` - Bug fix or minor improvement in plprql (for PostgreSQL 18)
+- `18.0.0` - Initial release of PL/PRQL for PostgreSQL 18
+- `18.1.0` - Breaking change in PL/PRQL functionality (still for PostgreSQL 18)
+- `18.0.1` - Bug fix or minor improvement in PL/PRQL (for PostgreSQL 18)
 
 To check your installed plprql version, run `SELECT extversion FROM pg_extension WHERE extname = 'plprql';`.
 
