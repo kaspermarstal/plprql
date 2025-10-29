@@ -1,5 +1,6 @@
 use crate::anydatum::AnyDatum;
 use crate::spi::Row;
+use pgrx::callconv::FcInfo;
 use pgrx::{IntoDatum, IntoHeapTuple, pg_sys};
 
 pub struct TableSrfResults {
@@ -28,63 +29,57 @@ where
     F: FnOnce() -> Option<Vec<Row>>,
 {
     unsafe {
-        let is_first_call = (*function_call_info).flinfo.as_ref().unwrap().fn_extra.is_null();
+        let mut fcinfo = FcInfo::from_ptr(function_call_info);
+        let is_first_call = !fcinfo.srf_is_initialized();
 
         let function_context = match is_first_call {
             // First call
             true => {
-                let function_context = pg_sys::init_MultiFuncCall(function_call_info);
-                let old_context = pg_sys::MemoryContextSwitchTo((*function_context).multi_call_memory_ctx);
+                let function_context = fcinfo.init_multi_func_call();
+                let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
                 // Setup tuple descriptor
-                (*function_context).tuple_desc = init_tuple_descriptor(function_call_info);
+                function_context.tuple_desc = init_tuple_descriptor(function_call_info);
 
                 // Setup state
                 if let Some(rows) = fetch_results() {
                     let function_results = Box::new(TableSrfResults { rows });
-                    (*function_context).max_calls = function_results.rows.len() as u64;
-                    (*function_context).user_fctx = Box::into_raw(function_results) as *mut std::ffi::c_void;
+                    function_context.max_calls = function_results.rows.len() as u64;
+                    function_context.user_fctx = Box::into_raw(function_results) as *mut std::ffi::c_void;
                 } else {
-                    (*function_context).max_calls = 0;
+                    function_context.max_calls = 0;
                 }
 
                 pg_sys::MemoryContextSwitchTo(old_context);
                 function_context
             }
             // Next call
-            false => pg_sys::per_MultiFuncCall(function_call_info),
+            false => &mut *pg_sys::per_MultiFuncCall(function_call_info),
         };
 
         // Return if no rows are left
-        let has_more_rows = (*function_context).call_cntr >= (*function_context).max_calls;
+        let has_more_rows = function_context.call_cntr >= function_context.max_calls;
 
         if has_more_rows {
-            if !(*function_context).user_fctx.is_null() {
-                let function_results = Box::from_raw((*function_context).user_fctx as *mut TableSrfResults);
+            if !function_context.user_fctx.is_null() {
+                let function_results = Box::from_raw(function_context.user_fctx as *mut TableSrfResults);
                 drop(function_results);
             }
 
-            pg_sys::end_MultiFuncCall(function_call_info, function_context);
-            let rsi = (*function_call_info).resultinfo as *mut pg_sys::ReturnSetInfo;
-            (*rsi).isDone = pg_sys::ExprDoneCond::ExprEndResult;
-
+            fcinfo.srf_return_done();
             return pg_sys::Datum::from(0);
         }
 
         // Return next row
-        let function_results = &mut *((*function_context).user_fctx as *mut TableSrfResults);
-        let row = &function_results.rows[(*function_context).call_cntr as usize];
-        (*function_context).call_cntr += 1;
+        let function_results = &mut *(function_context.user_fctx as *mut TableSrfResults);
+        let row = &function_results.rows[function_context.call_cntr as usize];
 
         // Convert to datum
-        let heap_tuple = row.clone().into_heap_tuple((*function_context).tuple_desc);
+        let heap_tuple = row.clone().into_heap_tuple(function_context.tuple_desc);
         let datum = pg_sys::HeapTupleHeaderGetDatum((*heap_tuple).t_data);
 
-        let return_set_info = (*function_call_info).resultinfo as *mut pg_sys::ReturnSetInfo;
-        (*return_set_info).isDone = pg_sys::ExprDoneCond::ExprMultipleResult;
-        (*function_call_info).isnull = false;
-
-        datum
+        fcinfo.srf_return_next();
+        fcinfo.return_raw_datum(datum).sans_lifetime()
     }
 }
 
@@ -93,68 +88,61 @@ where
     F: FnOnce() -> Option<Vec<Option<AnyDatum>>>,
 {
     unsafe {
-        let is_first_call = (*function_call_info).flinfo.as_ref().unwrap().fn_extra.is_null();
+        let mut fcinfo = FcInfo::from_ptr(function_call_info);
+        let is_first_call = !fcinfo.srf_is_initialized();
 
         let function_context = match is_first_call {
             // First call
             true => {
-                let function_context = pg_sys::init_MultiFuncCall(function_call_info);
-                let old_context = pg_sys::MemoryContextSwitchTo((*function_context).multi_call_memory_ctx);
+                let function_context = fcinfo.init_multi_func_call();
+                let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
-                let return_set_info = (*function_call_info).resultinfo as *mut pg_sys::ReturnSetInfo;
-                (*return_set_info).returnMode = pg_sys::SetFunctionReturnMode::SFRM_ValuePerCall;
+                let mut return_set_info = fcinfo.get_result_info();
+                return_set_info.set_return_mode(pg_sys::SetFunctionReturnMode::SFRM_ValuePerCall);
 
                 // Setup state
                 if let Some(values) = fetch_results() {
                     let function_state = Box::new(SetOfSrfResults { values });
-                    (*function_context).max_calls = function_state.values.len() as u64;
-                    (*function_context).user_fctx = Box::into_raw(function_state) as *mut std::ffi::c_void;
+                    function_context.max_calls = function_state.values.len() as u64;
+                    function_context.user_fctx = Box::into_raw(function_state) as *mut std::ffi::c_void;
                 } else {
-                    (*function_context).max_calls = 0;
+                    function_context.max_calls = 0;
                 }
 
                 pg_sys::MemoryContextSwitchTo(old_context);
                 function_context
             }
             // Next call
-            false => pg_sys::per_MultiFuncCall(function_call_info),
+            false => &mut *pg_sys::per_MultiFuncCall(function_call_info),
         };
 
         // Return if no rows are left
-        let has_more_rows = (*function_context).call_cntr >= (*function_context).max_calls;
+        let has_more_rows = function_context.call_cntr >= function_context.max_calls;
 
         if has_more_rows {
-            if !(*function_context).user_fctx.is_null() {
-                let function_results = Box::from_raw((*function_context).user_fctx as *mut SetOfSrfResults);
+            if !function_context.user_fctx.is_null() {
+                let function_results = Box::from_raw(function_context.user_fctx as *mut SetOfSrfResults);
                 drop(function_results);
             }
 
-            pg_sys::end_MultiFuncCall(function_call_info, function_context);
-            let rsi = (*function_call_info).resultinfo as *mut pg_sys::ReturnSetInfo;
-            (*rsi).isDone = pg_sys::ExprDoneCond::ExprEndResult;
-
+            fcinfo.srf_return_done();
             return pg_sys::Datum::from(0);
         }
 
         // Return next record
-        let function_results = &mut *((*function_context).user_fctx as *mut SetOfSrfResults);
-        let record = &function_results.values[(*function_context).call_cntr as usize];
-        (*function_context).call_cntr += 1;
-
-        let return_set_info = (*function_call_info).resultinfo as *mut pg_sys::ReturnSetInfo;
-        (*return_set_info).isDone = pg_sys::ExprDoneCond::ExprMultipleResult;
+        let function_results = &mut *(function_context.user_fctx as *mut SetOfSrfResults);
+        let record = &function_results.values[function_context.call_cntr as usize];
 
         // Convert to datum
-        match record {
+        let datum = match record {
             Some(value) => {
                 let datum = value.clone().into_datum().unwrap_or(pg_sys::Datum::from(0));
-                (*function_call_info).isnull = false;
-                datum
+                fcinfo.return_raw_datum(datum)
             }
-            None => {
-                (*function_call_info).isnull = true;
-                pg_sys::Datum::from(0)
-            }
-        }
+            None => fcinfo.return_null(),
+        };
+
+        fcinfo.srf_return_next();
+        datum.sans_lifetime()
     }
 }
