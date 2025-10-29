@@ -88,7 +88,7 @@ where
             return pg_sys::Datum::from(0);
         }
 
-        // Return next row
+        // Get next result
         let function_results = get_srf_state::<TableSrfResults>(function_context);
         let row = &function_results.rows[function_context.call_cntr as usize];
 
@@ -143,7 +143,7 @@ where
             return pg_sys::Datum::from(0);
         }
 
-        // Return next record
+        // Get next result
         let function_results = get_srf_state::<SetOfSrfResults>(function_context);
         let record = &function_results.values[function_context.call_cntr as usize];
 
