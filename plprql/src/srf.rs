@@ -7,8 +7,26 @@ pub struct TableSrfResults {
     rows: Vec<Row>,
 }
 
+impl TableSrfResults {
+    /// Get row at current position in SRF results
+    unsafe fn at(srf_context: &mut pg_sys::FuncCallContext) -> &Row {
+        let index = srf_context.call_cntr as usize;
+        let results = unsafe { &mut *(srf_context.user_fctx as *mut TableSrfResults) };
+        &results.rows[index]
+    }
+}
+
 pub struct SetOfSrfResults {
     values: Vec<Option<AnyDatum>>,
+}
+
+impl SetOfSrfResults {
+    /// Get value at current position in SRF results
+    unsafe fn at(srf_context: &mut pg_sys::FuncCallContext) -> &Option<AnyDatum> {
+        let index = srf_context.call_cntr as usize;
+        let results = unsafe { &mut *(srf_context.user_fctx as *mut SetOfSrfResults) };
+        &results.values[index]
+    }
 }
 
 /// Initialize tuple descriptor for table-returning functions
@@ -28,20 +46,6 @@ unsafe fn init_tuple_descriptor(fcinfo: &mut FcInfo) -> *mut pg_sys::TupleDescDa
 /// Get function context for subsequent SRF calls
 unsafe fn get_function_context<'fcx>(fcinfo: &FcInfo<'fcx>) -> &'fcx mut pg_sys::FuncCallContext {
     unsafe { &mut *pg_sys::per_MultiFuncCall(fcinfo.as_mut_ptr()) }
-}
-
-/// Get next row from table SRF results
-unsafe fn get_next_row(srf_context: &mut pg_sys::FuncCallContext) -> &Row {
-    let index = srf_context.call_cntr as usize;
-    let results = unsafe { &mut *(srf_context.user_fctx as *mut TableSrfResults) };
-    &results.rows[index]
-}
-
-/// Get next record from SETOF SRF results
-unsafe fn get_next_record(srf_context: &mut pg_sys::FuncCallContext) -> &Option<AnyDatum> {
-    let index = srf_context.call_cntr as usize;
-    let results = unsafe { &mut *(srf_context.user_fctx as *mut SetOfSrfResults) };
-    &results.values[index]
 }
 
 /// Drop SRF state if present
@@ -93,7 +97,7 @@ where
         }
 
         // Get next result
-        let row = get_next_row(srf_context);
+        let row = TableSrfResults::at(srf_context);
 
         // Convert to datum
         let heap_tuple = row.clone().into_heap_tuple(srf_context.tuple_desc);
@@ -147,7 +151,7 @@ where
         }
 
         // Get next result
-        let record = get_next_record(srf_context);
+        let record = SetOfSrfResults::at(srf_context);
 
         // Convert to datum
         let datum = match record {
