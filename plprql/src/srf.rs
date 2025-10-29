@@ -62,7 +62,7 @@ where
                 let function_context = fcinfo.init_multi_func_call();
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
-                // Setup tuple descriptor
+                // Set return mode
                 function_context.tuple_desc = init_tuple_descriptor(&mut fcinfo);
 
                 // Setup state
@@ -116,7 +116,7 @@ where
                 let function_context = fcinfo.init_multi_func_call();
                 let old_context = pg_sys::MemoryContextSwitchTo(function_context.multi_call_memory_ctx);
 
-                // Set return mode for SETOF functions
+                // Set return mode
                 let mut return_set_info = fcinfo.get_result_info();
                 return_set_info.set_return_mode(pg_sys::SetFunctionReturnMode::SFRM_ValuePerCall);
 
