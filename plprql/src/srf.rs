@@ -31,7 +31,7 @@ unsafe fn get_function_context<'fcx>(fcinfo: &FcInfo<'fcx>) -> &'fcx mut pg_sys:
 }
 
 /// Get typed state from function context
-unsafe fn get_srf_state<T>(context: &pg_sys::FuncCallContext) -> &mut T {
+unsafe fn get_srf_state<T>(context: &mut pg_sys::FuncCallContext) -> &mut T {
     unsafe { &mut *(context.user_fctx as *mut T) }
 }
 
