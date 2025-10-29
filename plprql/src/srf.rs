@@ -17,7 +17,7 @@ impl TableSrfResults {
 }
 
 pub struct SetOfSrfResults {
-    values: Vec<Option<AnyDatum>>,
+    records: Vec<Option<AnyDatum>>,
 }
 
 impl SetOfSrfResults {
@@ -25,7 +25,7 @@ impl SetOfSrfResults {
     unsafe fn at(srf_context: &mut pg_sys::FuncCallContext) -> &Option<AnyDatum> {
         let index = srf_context.call_cntr as usize;
         let results = unsafe { &mut *(srf_context.user_fctx as *mut SetOfSrfResults) };
-        &results.values[index]
+        &results.records[index]
     }
 }
 
@@ -44,7 +44,7 @@ unsafe fn init_tuple_descriptor(fcinfo: &mut FcInfo) -> *mut pg_sys::TupleDescDa
 }
 
 /// Get function context for subsequent SRF calls
-unsafe fn get_function_context<'fcx>(fcinfo: &FcInfo<'fcx>) -> &'fcx mut pg_sys::FuncCallContext {
+unsafe fn get_function_call_context<'fcx>(fcinfo: &FcInfo<'fcx>) -> &'fcx mut pg_sys::FuncCallContext {
     unsafe { &mut *pg_sys::per_MultiFuncCall(fcinfo.as_mut_ptr()) }
 }
 
@@ -64,7 +64,7 @@ where
 
         let srf_context = match fcinfo.srf_is_initialized() {
             // Next call
-            true => get_function_context(&fcinfo),
+            true => get_function_call_context(&fcinfo),
             // First call
             false => {
                 let srf_context = fcinfo.init_multi_func_call();
@@ -75,9 +75,9 @@ where
 
                 // Setup state
                 if let Some(rows) = fetch_results() {
-                    let function_results = Box::new(TableSrfResults { rows });
-                    srf_context.max_calls = function_results.rows.len() as u64;
-                    srf_context.user_fctx = Box::into_raw(function_results) as *mut std::ffi::c_void;
+                    let results = Box::new(TableSrfResults { rows });
+                    srf_context.max_calls = results.rows.len() as u64;
+                    srf_context.user_fctx = Box::into_raw(results) as *mut std::ffi::c_void;
                 } else {
                     srf_context.max_calls = 0;
                 }
@@ -88,9 +88,7 @@ where
         };
 
         // Check if we've returned all rows
-        let is_done = srf_context.call_cntr >= srf_context.max_calls;
-
-        if is_done {
+        if srf_context.call_cntr >= srf_context.max_calls {
             drop_srf_state::<TableSrfResults>(srf_context);
             fcinfo.srf_return_done();
             return pg_sys::Datum::from(0);
@@ -116,7 +114,7 @@ where
 
         let srf_context = match fcinfo.srf_is_initialized() {
             // Next call
-            true => get_function_context(&fcinfo),
+            true => get_function_call_context(&fcinfo),
             // First call
             false => {
                 let srf_context = fcinfo.init_multi_func_call();
@@ -127,10 +125,10 @@ where
                 return_set_info.set_return_mode(pg_sys::SetFunctionReturnMode::SFRM_ValuePerCall);
 
                 // Setup state
-                if let Some(values) = fetch_results() {
-                    let function_state = Box::new(SetOfSrfResults { values });
-                    srf_context.max_calls = function_state.values.len() as u64;
-                    srf_context.user_fctx = Box::into_raw(function_state) as *mut std::ffi::c_void;
+                if let Some(records) = fetch_results() {
+                    let results = Box::new(SetOfSrfResults { records });
+                    srf_context.max_calls = results.records.len() as u64;
+                    srf_context.user_fctx = Box::into_raw(results) as *mut std::ffi::c_void;
                 } else {
                     srf_context.max_calls = 0;
                 }
@@ -141,9 +139,7 @@ where
         };
 
         // Check if we've returned all rows
-        let is_done = srf_context.call_cntr >= srf_context.max_calls;
-
-        if is_done {
+        if srf_context.call_cntr >= srf_context.max_calls {
             drop_srf_state::<SetOfSrfResults>(srf_context);
             fcinfo.srf_return_done();
             return pg_sys::Datum::from(0);
@@ -161,6 +157,7 @@ where
             }
             None => fcinfo.return_null(),
         };
+
         datum.sans_lifetime()
     }
 }
