@@ -96,14 +96,13 @@ where
             return pg_sys::Datum::from(0);
         }
 
-        // Get next result
+        // Get result at call_cntr and increment for next call
         let row = TableSrfResults::at(srf_context);
+        fcinfo.srf_return_next();
 
         // Convert to datum
         let heap_tuple = row.clone().into_heap_tuple(srf_context.tuple_desc);
         let datum = pg_sys::HeapTupleHeaderGetDatum((*heap_tuple).t_data);
-
-        fcinfo.srf_return_next();
         fcinfo.return_raw_datum(datum).sans_lifetime()
     }
 }
@@ -150,8 +149,9 @@ where
             return pg_sys::Datum::from(0);
         }
 
-        // Get next result
+        // Get result at call_cntr and increment for next call
         let record = SetOfSrfResults::at(srf_context);
+        fcinfo.srf_return_next();
 
         // Convert to datum
         let datum = match record {
@@ -161,8 +161,6 @@ where
             }
             None => fcinfo.return_null(),
         };
-
-        fcinfo.srf_return_next();
         datum.sans_lifetime()
     }
 }
