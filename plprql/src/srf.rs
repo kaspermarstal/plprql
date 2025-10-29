@@ -84,8 +84,9 @@ where
         }
 
         // Get next result
+        let index = function_context.call_cntr as usize;
         let function_results = get_srf_state::<TableSrfResults>(function_context);
-        let row = &function_results.rows[function_context.call_cntr as usize];
+        let row = &function_results.rows[index];
 
         // Convert to datum
         let heap_tuple = row.clone().into_heap_tuple(function_context.tuple_desc);
@@ -139,8 +140,9 @@ where
         }
 
         // Get next result
+        let index = function_context.call_cntr as usize;
         let function_results = get_srf_state::<SetOfSrfResults>(function_context);
-        let record = &function_results.values[function_context.call_cntr as usize];
+        let record = &function_results.values[index];
 
         // Convert to datum
         let datum = match record {
