@@ -19,7 +19,7 @@
 
 use pgrx::{
     PgBuiltInOids, PgOid,
-    datum::{AnyNumeric, Date, FromDatum, IntoDatum, JsonB, Timestamp},
+    datum::{AnyNumeric, Date, FromDatum, IntoDatum, JsonB, Timestamp, Time, TimestampWithTimeZone, Interval, Uuid},
     fcinfo, pg_sys,
 };
 use std::ffi::CStr;
@@ -37,9 +37,39 @@ pub enum AnyDatum {
     Numeric(AnyNumeric),
     String(String),
     Date(Date),
+    Time(Time),
     Timestamp(Timestamp),
+    Timestamptz(TimestampWithTimeZone),
+    Interval(Interval),
     Json(JsonB),
+    Bytea(*mut pg_sys::bytea),
+    Uuid(Uuid),
+    BoolArray(Vec<Option<bool>>),
+    I16Array(Vec<Option<i16>>),
+    I32Array(Vec<Option<i32>>),
+    I64Array(Vec<Option<i64>>),
+    F32Array(Vec<Option<f32>>),
+    F64Array(Vec<Option<f64>>),
+    StringArray(Vec<Option<String>>),
 }
+
+impl AnyDatum {
+    /// Check if datum is an array type
+    pub fn is_array(&self) -> bool {
+        matches!(
+            self,
+            AnyDatum::BoolArray(_)
+                | AnyDatum::I16Array(_)
+                | AnyDatum::I32Array(_)
+                | AnyDatum::I64Array(_)
+                | AnyDatum::F32Array(_)
+                | AnyDatum::F64Array(_)
+                | AnyDatum::StringArray(_)
+        )
+    }
+}
+
+unsafe impl Send for AnyDatum {}
 
 impl Clone for AnyDatum {
     fn clone(&self) -> Self {
@@ -54,8 +84,20 @@ impl Clone for AnyDatum {
             AnyDatum::Numeric(v) => AnyDatum::Numeric(v.clone()),
             AnyDatum::String(v) => AnyDatum::String(v.clone()),
             AnyDatum::Date(v) => AnyDatum::Date(*v),
+            AnyDatum::Time(v) => AnyDatum::Time(*v),
             AnyDatum::Timestamp(v) => AnyDatum::Timestamp(*v),
+            AnyDatum::Timestamptz(v) => AnyDatum::Timestamptz(*v),
+            AnyDatum::Interval(v) => AnyDatum::Interval(*v),
             AnyDatum::Json(v) => AnyDatum::Json(JsonB(v.0.clone())),
+            AnyDatum::Bytea(v) => AnyDatum::Bytea(*v),
+            AnyDatum::Uuid(v) => AnyDatum::Uuid(*v),
+            AnyDatum::BoolArray(v) => AnyDatum::BoolArray(v.clone()),
+            AnyDatum::I16Array(v) => AnyDatum::I16Array(v.clone()),
+            AnyDatum::I32Array(v) => AnyDatum::I32Array(v.clone()),
+            AnyDatum::I64Array(v) => AnyDatum::I64Array(v.clone()),
+            AnyDatum::F32Array(v) => AnyDatum::F32Array(v.clone()),
+            AnyDatum::F64Array(v) => AnyDatum::F64Array(v.clone()),
+            AnyDatum::StringArray(v) => AnyDatum::StringArray(v.clone()),
         }
     }
 }
@@ -73,8 +115,20 @@ impl IntoDatum for AnyDatum {
             AnyDatum::Numeric(v) => v.into_datum(),
             AnyDatum::String(v) => v.into_datum(),
             AnyDatum::Date(v) => v.into_datum(),
+            AnyDatum::Time(v) => v.into_datum(),
             AnyDatum::Timestamp(v) => v.into_datum(),
+            AnyDatum::Timestamptz(v) => v.into_datum(),
+            AnyDatum::Interval(v) => v.into_datum(),
             AnyDatum::Json(v) => v.into_datum(),
+            AnyDatum::Bytea(v) => Some(pg_sys::Datum::from(v)),
+            AnyDatum::Uuid(v) => v.into_datum(),
+            AnyDatum::BoolArray(v) => v.into_datum(),
+            AnyDatum::I16Array(v) => v.into_datum(),
+            AnyDatum::I32Array(v) => v.into_datum(),
+            AnyDatum::I64Array(v) => v.into_datum(),
+            AnyDatum::F32Array(v) => v.into_datum(),
+            AnyDatum::F64Array(v) => v.into_datum(),
+            AnyDatum::StringArray(v) => v.into_datum(),
         }
     }
 
@@ -94,8 +148,20 @@ impl IntoDatum for AnyDatum {
             || other == pg_sys::NUMERICOID
             || other == pg_sys::TEXTOID
             || other == pg_sys::DATEOID
+            || other == pg_sys::TIMEOID
             || other == pg_sys::TIMESTAMPOID
+            || other == pg_sys::TIMESTAMPTZOID
+            || other == pg_sys::INTERVALOID
             || other == pg_sys::JSONBOID
+            || other == pg_sys::BYTEAOID
+            || other == pg_sys::UUIDOID
+            || other == pg_sys::BOOLARRAYOID
+            || other == pg_sys::INT2ARRAYOID
+            || other == pg_sys::INT4ARRAYOID
+            || other == pg_sys::INT8ARRAYOID
+            || other == pg_sys::FLOAT4ARRAYOID
+            || other == pg_sys::FLOAT8ARRAYOID
+            || other == pg_sys::TEXTARRAYOID
             || other == pg_sys::VARCHAROID
     }
 }
@@ -105,53 +171,112 @@ impl FromDatum for AnyDatum {
     where
         Self: Sized,
     {
-        if is_null {
-            return None;
-        }
-
-        match PgOid::from(typoid) {
+        let oid = PgOid::from(typoid);
+        match oid {
             PgOid::BuiltIn(PgBuiltInOids::BOOLOID) => {
-                Some(AnyDatum::Bool(unsafe { bool::from_datum(datum, false).unwrap() }))
+                bool::from_datum(datum, is_null).map(AnyDatum::Bool)
             }
             PgOid::BuiltIn(PgBuiltInOids::CHAROID) => {
-                Some(AnyDatum::I8(unsafe { i8::from_datum(datum, false).unwrap() }))
+                i8::from_datum(datum, is_null).map(AnyDatum::I8)
             }
             PgOid::BuiltIn(PgBuiltInOids::INT2OID) => {
-                Some(AnyDatum::I16(unsafe { i16::from_datum(datum, false).unwrap() }))
+                i16::from_datum(datum, is_null).map(AnyDatum::I16)
             }
             PgOid::BuiltIn(PgBuiltInOids::FLOAT4OID) => {
-                Some(AnyDatum::F32(unsafe { f32::from_datum(datum, false).unwrap() }))
+                f32::from_datum(datum, is_null).map(AnyDatum::F32)
             }
             PgOid::BuiltIn(PgBuiltInOids::INT4OID) => {
-                Some(AnyDatum::I32(unsafe { i32::from_datum(datum, false).unwrap() }))
+                i32::from_datum(datum, is_null).map(AnyDatum::I32)
             }
             PgOid::BuiltIn(PgBuiltInOids::FLOAT8OID) => {
-                Some(AnyDatum::F64(unsafe { f64::from_datum(datum, false).unwrap() }))
+                f64::from_datum(datum, is_null).map(AnyDatum::F64)
             }
             PgOid::BuiltIn(PgBuiltInOids::INT8OID) => {
-                Some(AnyDatum::I64(unsafe { i64::from_datum(datum, false).unwrap() }))
+                i64::from_datum(datum, is_null).map(AnyDatum::I64)
             }
-            PgOid::BuiltIn(PgBuiltInOids::NUMERICOID) => Some(AnyDatum::Numeric(unsafe {
-                AnyNumeric::from_datum(datum, false).unwrap()
-            })),
+            PgOid::BuiltIn(PgBuiltInOids::NUMERICOID) => {
+                AnyNumeric::from_datum(datum, is_null).map(AnyDatum::Numeric)
+            }
             PgOid::BuiltIn(PgBuiltInOids::TEXTOID) => {
-                Some(AnyDatum::String(unsafe { String::from_datum(datum, false).unwrap() }))
+                String::from_datum(datum, is_null).map(AnyDatum::String)
             }
             PgOid::BuiltIn(PgBuiltInOids::DATEOID) => {
-                Some(AnyDatum::Date(unsafe { Date::from_datum(datum, false).unwrap() }))
+                Date::from_datum(datum, is_null).map(AnyDatum::Date)
             }
-            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => Some(AnyDatum::Timestamp(unsafe {
-                Timestamp::from_datum(datum, false).unwrap()
-            })),
+            PgOid::BuiltIn(PgBuiltInOids::TIMEOID) => {
+                Time::from_datum(datum, is_null).map(AnyDatum::Time)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => {
+                Timestamp::from_datum(datum, is_null).map(AnyDatum::Timestamp)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZOID) => {
+                TimestampWithTimeZone::from_datum(datum, is_null).map(AnyDatum::Timestamptz)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::INTERVALOID) => {
+                Interval::from_datum(datum, is_null).map(AnyDatum::Interval)
+            }
             PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => {
-                Some(AnyDatum::Json(unsafe { JsonB::from_datum(datum, false).unwrap() }))
+                JsonB::from_datum(datum, is_null).map(AnyDatum::Json)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::BYTEAOID) => {
+                if is_null {
+                    None
+                } else {
+                    Some(AnyDatum::Bytea(datum.cast_mut_ptr::<pg_sys::bytea>()))
+                }
+            }
+            PgOid::BuiltIn(PgBuiltInOids::UUIDOID) => {
+                Uuid::from_datum(datum, is_null).map(AnyDatum::Uuid)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => {
+                Vec::<Option<bool>>::from_datum(datum, false).map(AnyDatum::BoolArray)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::INT2ARRAYOID) => {
+                Vec::<Option<i16>>::from_datum(datum, false).map(AnyDatum::I16Array)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::INT4ARRAYOID) => {
+                Vec::<Option<i32>>::from_datum(datum, false).map(AnyDatum::I32Array)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::INT8ARRAYOID) => {
+                Vec::<Option<i64>>::from_datum(datum, false).map(AnyDatum::I64Array)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT4ARRAYOID) => {
+                Vec::<Option<f32>>::from_datum(datum, false).map(AnyDatum::F32Array)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT8ARRAYOID) => {
+                Vec::<Option<f64>>::from_datum(datum, false).map(AnyDatum::F64Array)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::TEXTARRAYOID) => {
+                Vec::<Option<String>>::from_datum(datum, false).map(AnyDatum::StringArray)
             }
             PgOid::BuiltIn(PgBuiltInOids::VARCHAROID) => {
-                Some(AnyDatum::String(unsafe { String::from_datum(datum, false).unwrap() }))
+                String::from_datum(datum, is_null).map(AnyDatum::String)
+            }
+            PgOid::Custom(_) => {
+                if is_null {
+                    None
+                } else {
+                    Some(AnyDatum::Bytea(datum.cast_mut_ptr::<pg_sys::bytea>()))
+                }
             }
             _ => None,
         }
     }
+}
+
+fn write_array<T: std::fmt::Display>(
+    array: &[Option<T>],
+    f: &mut fmt::Formatter<'_>,
+) -> fmt::Result {
+    let res = array
+        .iter()
+        .map(|e| match e {
+            Some(val) => format!("{val}",),
+            None => "null".to_owned(),
+        })
+        .collect::<Vec<String>>()
+        .join(",");
+    write!(f, "[{res}]",)
 }
 
 impl fmt::Display for AnyDatum {
@@ -164,19 +289,78 @@ impl fmt::Display for AnyDatum {
             AnyDatum::I32(v) => write!(f, "{v}"),
             AnyDatum::F64(v) => write!(f, "{v}"),
             AnyDatum::I64(v) => write!(f, "{v}"),
-            AnyDatum::Numeric(v) => write!(f, "{v:?}"),
+            AnyDatum::Numeric(v) => write!(f, "{v}"),
             AnyDatum::String(v) => write!(f, "'{v}'"),
             AnyDatum::Date(v) => unsafe {
-                let dt = fcinfo::direct_function_call_as_datum(pg_sys::date_out, &[(*v).into_datum()]).unwrap();
+                let dt = fcinfo::direct_function_call_as_datum(pg_sys::date_out, &[(*v).into_datum()])
+                    .expect("datum should be a valid date");
                 let dt_cstr = CStr::from_ptr(dt.cast_mut_ptr());
-                write!(f, "'{}'", dt_cstr.to_str().unwrap())
+                write!(
+                    f,
+                    "'{}'",
+                    dt_cstr.to_str().expect("date should be a valid string")
+                )
+            },
+            AnyDatum::Time(v) => unsafe {
+                let ts = fcinfo::direct_function_call_as_datum(pg_sys::time_out, &[(*v).into_datum()])
+                    .expect("datum should be a valid time");
+                let ts_cstr = CStr::from_ptr(ts.cast_mut_ptr());
+                write!(
+                    f,
+                    "'{}'",
+                    ts_cstr.to_str().expect("time should be a valid string")
+                )
             },
             AnyDatum::Timestamp(v) => unsafe {
-                let ts = fcinfo::direct_function_call_as_datum(pg_sys::timestamp_out, &[(*v).into_datum()]).unwrap();
+                let ts = fcinfo::direct_function_call_as_datum(pg_sys::timestamp_out, &[(*v).into_datum()])
+                    .expect("datum should be a valid timestamp");
                 let ts_cstr = CStr::from_ptr(ts.cast_mut_ptr());
-                write!(f, "'{}'", ts_cstr.to_str().unwrap())
+                write!(
+                    f,
+                    "'{}'",
+                    ts_cstr
+                        .to_str()
+                        .expect("timestamp should be a valid string")
+                )
             },
+            AnyDatum::Timestamptz(v) => unsafe {
+                let ts = fcinfo::direct_function_call_as_datum(
+                    pg_sys::timestamptz_out,
+                    &[(*v).into_datum()],
+                )
+                .expect("datum should be a valid timestamptz");
+                let ts_cstr = CStr::from_ptr(ts.cast_mut_ptr());
+                write!(
+                    f,
+                    "'{}'",
+                    ts_cstr
+                        .to_str()
+                        .expect("timestamptz should be a valid string")
+                )
+            },
+            AnyDatum::Interval(v) => write!(f, "{v}"),
             AnyDatum::Json(v) => write!(f, "{v:?}"),
+            AnyDatum::Bytea(v) => {
+                let byte_u8 = unsafe { pgrx::varlena::varlena_to_byte_slice(*v) };
+                let hex = byte_u8
+                    .iter()
+                    .map(|b| format!("{b:02X}"))
+                    .collect::<Vec<String>>()
+                    .join("");
+                if hex.is_empty() {
+                    write!(f, "''")
+                } else {
+                    write!(f, r#"'\x{hex}'"#,)
+                }
+            }
+            AnyDatum::Uuid(v) => write!(f, "'{v}'",),
+            AnyDatum::BoolArray(v) => write_array(v, f),
+            AnyDatum::I16Array(v) => write_array(v, f),
+            AnyDatum::I32Array(v) => write_array(v, f),
+            AnyDatum::I64Array(v) => write_array(v, f),
+            AnyDatum::F32Array(v) => write_array(v, f),
+            AnyDatum::F64Array(v) => write_array(v, f),
+            AnyDatum::StringArray(v) => write_array(v, f),
         }
     }
 }
