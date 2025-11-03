@@ -51,10 +51,8 @@ pub extern "C-unwind" fn plprql_call_handler(fcinfo: pg_sys::FunctionCallInfo) -
         Err(e) => pgrx::error!("{}", e),
     };
 
-    let return_mode = function.return_mode();
-
     unsafe {
-        match return_mode {
+        match function.return_mode() {
             Return::Table => table_srf_next(function.call_info, fetch_table(&function)),
             Return::SetOf => setof_srf_next(function.call_info, fetch_setof(&function)),
             Return::Scalar => fetch_row(&function),

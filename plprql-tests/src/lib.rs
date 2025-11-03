@@ -283,7 +283,7 @@ mod tests {
                     (
                         "int_" int,
                         "int2_" int2,
-                        "int4_" int4, 
+                        "int4_" int4,
                         "int8_" int8,
                         "smallint_" smallint,
                         "integer_" integer,
@@ -299,28 +299,54 @@ mod tests {
                         "text_" text,
                         "varchar_" varchar(10),
                         "jsonb_" jsonb,
+                        "date_" date,
+                        "time_" time,
+                        "timestamp_" timestamp,
+                        "timestamptz_" timestamptz,
+                        "interval_" interval,
+                        "uuid_" uuid,
+                        "bool_array_" bool[],
+                        "int2_array_" int2[],
+                        "int4_array_" int4[],
+                        "int8_array_" int8[],
+                        "float4_array_" float4[],
+                        "float8_array_" float8[],
+                        "text_array_" text[],
                         primary key ("serial_")
                     );
-                    
+
                     insert into "supported_types" (
-                        "int_", 
-                        "int2_", 
-                        "int4_", 
-                        "int8_", 
-                        "smallint_", 
-                        "integer_", 
-                        "bigint_", 
-                        "numeric_", 
-                        "real_", 
-                        "double_", 
-                        "float4_", 
-                        "float8_", 
-                        "smallserial_", 
-                        "serial_", 
-                        "bigserial_", 
-                        "text_", 
-                        "varchar_", 
-                        "jsonb_"
+                        "int_",
+                        "int2_",
+                        "int4_",
+                        "int8_",
+                        "smallint_",
+                        "integer_",
+                        "bigint_",
+                        "numeric_",
+                        "real_",
+                        "double_",
+                        "float4_",
+                        "float8_",
+                        "smallserial_",
+                        "serial_",
+                        "bigserial_",
+                        "text_",
+                        "varchar_",
+                        "jsonb_",
+                        "date_",
+                        "time_",
+                        "timestamp_",
+                        "timestamptz_",
+                        "interval_",
+                        "uuid_",
+                        "bool_array_",
+                        "int2_array_",
+                        "int4_array_",
+                        "int8_array_",
+                        "float4_array_",
+                        "float8_array_",
+                        "text_array_"
                     )
                     values (
                         0, -- int_
@@ -340,13 +366,26 @@ mod tests {
                         DEFAULT, -- bigserial_ (auto-incremented)
                         'Sample Text', -- text
                         'VarChar', -- varchar
-                        '{"key": "value"}' -- jsonb
+                        '{"key": "value"}', -- jsonb
+                        '2024-01-15', -- date_
+                        '14:30:00', -- time_
+                        '2024-01-15 14:30:00', -- timestamp_
+                        '2024-01-15 14:30:00+00', -- timestamptz_
+                        '1 day 2 hours', -- interval_
+                        '550e8400-e29b-41d4-a716-446655440000', -- uuid_
+                        ARRAY[true, false, true], -- bool_array_
+                        ARRAY[1, 2, 3], -- int2_array_
+                        ARRAY[10, 20, 30], -- int4_array_
+                        ARRAY[100, 200, 300], -- int8_array_
+                        ARRAY[1.1, 2.2, 3.3], -- float4_array_
+                        ARRAY[10.1, 20.2, 30.3], -- float8_array_
+                        ARRAY['foo', 'bar', 'baz'] -- text_array_
                     );
 
                     create function get_supported_types(int) returns table(
                         "int_" int,
                         "int2_" int2,
-                        "int4_" int4, 
+                        "int4_" int4,
                         "int8_" int8,
                         "smallint_" smallint,
                         "integer_" integer,
@@ -361,7 +400,20 @@ mod tests {
                         "bigserial_" bigint,
                         "text_" text,
                         "varchar_" varchar(10),
-                        "jsonb_" jsonb
+                        "jsonb_" jsonb,
+                        "date_" date,
+                        "time_" time,
+                        "timestamp_" timestamp,
+                        "timestamptz_" timestamptz,
+                        "interval_" interval,
+                        "uuid_" uuid,
+                        "bool_array_" bool[],
+                        "int2_array_" int2[],
+                        "int4_array_" int4[],
+                        "int8_array_" int8[],
+                        "float4_array_" float4[],
+                        "float8_array_" float8[],
+                        "text_array_" text[]
                     ) as $$
                         from supported_types
                         filter serial_ == $1
@@ -473,6 +525,63 @@ mod tests {
 
             assert_eq!(jsonb_struct.key, "value".to_string());
 
+            use pgrx::datum::{Date, Interval, Time, Timestamp, TimestampWithTimeZone, Uuid};
+
+            let date = supported_types.get::<Date>(supported_types.column_ordinal("date_")?)?;
+            assert!(date.is_some());
+
+            let time = supported_types.get::<Time>(supported_types.column_ordinal("time_")?)?;
+            assert!(time.is_some());
+
+            let timestamp = supported_types.get::<Timestamp>(supported_types.column_ordinal("timestamp_")?)?;
+            assert!(timestamp.is_some());
+
+            let timestamptz =
+                supported_types.get::<TimestampWithTimeZone>(supported_types.column_ordinal("timestamptz_")?)?;
+            assert!(timestamptz.is_some());
+
+            let interval = supported_types.get::<Interval>(supported_types.column_ordinal("interval_")?)?;
+            assert!(interval.is_some());
+
+            let uuid = supported_types.get::<Uuid>(supported_types.column_ordinal("uuid_")?)?;
+            assert!(uuid.is_some());
+
+            let bool_array =
+                supported_types.get::<Vec<Option<bool>>>(supported_types.column_ordinal("bool_array_")?)?;
+            assert_eq!(bool_array, Some(vec![Some(true), Some(false), Some(true)]));
+
+            let int2_array = supported_types.get::<Vec<Option<i16>>>(supported_types.column_ordinal("int2_array_")?)?;
+            assert_eq!(int2_array, Some(vec![Some(1), Some(2), Some(3)]));
+
+            let int4_array = supported_types.get::<Vec<Option<i32>>>(supported_types.column_ordinal("int4_array_")?)?;
+            assert_eq!(int4_array, Some(vec![Some(10), Some(20), Some(30)]));
+
+            let int8_array = supported_types.get::<Vec<Option<i64>>>(supported_types.column_ordinal("int8_array_")?)?;
+            assert_eq!(int8_array, Some(vec![Some(100), Some(200), Some(300)]));
+
+            let float4_array =
+                supported_types.get::<Vec<Option<f32>>>(supported_types.column_ordinal("float4_array_")?)?;
+            assert!(float4_array.is_some());
+            let float4_vec = float4_array.unwrap();
+            assert_eq!(float4_vec.len(), 3);
+
+            let float8_array =
+                supported_types.get::<Vec<Option<f64>>>(supported_types.column_ordinal("float8_array_")?)?;
+            assert!(float8_array.is_some());
+            let float8_vec = float8_array.unwrap();
+            assert_eq!(float8_vec.len(), 3);
+
+            let text_array =
+                supported_types.get::<Vec<Option<String>>>(supported_types.column_ordinal("text_array_")?)?;
+            assert_eq!(
+                text_array,
+                Some(vec![
+                    Some("foo".to_string()),
+                    Some("bar".to_string()),
+                    Some("baz".to_string())
+                ])
+            );
+
             Ok(())
         })
     }
@@ -487,7 +596,7 @@ mod tests {
                     (
                         "int_" int,
                         "int2_" int2,
-                        "int4_" int4, 
+                        "int4_" int4,
                         "int8_" int8,
                         "smallint_" smallint,
                         "integer_" integer,
@@ -501,20 +610,33 @@ mod tests {
                         "text_" text,
                         "varchar_" varchar(10),
                         "jsonb_" jsonb,
+                        "date_" date,
+                        "time_" time,
+                        "timestamp_" timestamp,
+                        "timestamptz_" timestamptz,
+                        "interval_" interval,
+                        "uuid_" uuid,
+                        "bool_array_" bool[],
+                        "int2_array_" int2[],
+                        "int4_array_" int4[],
+                        "int8_array_" int8[],
+                        "float4_array_" float4[],
+                        "float8_array_" float8[],
+                        "text_array_" text[],
                         primary key ("serial_")
                     );
-                    
+
                     insert into "null_values" (
                         "serial_"
                     )
                     values (
                         DEFAULT -- serial_ (auto-incremented)
                     );
-                    
+
                     create function get_null_values(int) returns table(
                         "int_" int,
                         "int2_" int2,
-                        "int4_" int4, 
+                        "int4_" int4,
                         "int8_" int8,
                         "smallint_" smallint,
                         "integer_" integer,
@@ -527,7 +649,20 @@ mod tests {
                         "serial_" integer,
                         "text_" text,
                         "varchar_" varchar(10),
-                        "jsonb_" jsonb
+                        "jsonb_" jsonb,
+                        "date_" date,
+                        "time_" time,
+                        "timestamp_" timestamp,
+                        "timestamptz_" timestamptz,
+                        "interval_" interval,
+                        "uuid_" uuid,
+                        "bool_array_" bool[],
+                        "int2_array_" int2[],
+                        "int4_array_" int4[],
+                        "int8_array_" int8[],
+                        "float4_array_" float4[],
+                        "float8_array_" float8[],
+                        "text_array_" text[]
                     ) as $$
                         from null_values
                         filter serial_ == $1
@@ -577,6 +712,52 @@ mod tests {
             let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
 
             assert!(jsonb.is_none());
+
+            use pgrx::datum::{Date, Interval, Time, Timestamp, TimestampWithTimeZone, Uuid};
+
+            assert_eq!(null_values.get::<Date>(null_values.column_ordinal("date_")?)?, None);
+            assert_eq!(null_values.get::<Time>(null_values.column_ordinal("time_")?)?, None);
+            assert_eq!(
+                null_values.get::<Timestamp>(null_values.column_ordinal("timestamp_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<TimestampWithTimeZone>(null_values.column_ordinal("timestamptz_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Interval>(null_values.column_ordinal("interval_")?)?,
+                None
+            );
+            assert_eq!(null_values.get::<Uuid>(null_values.column_ordinal("uuid_")?)?, None);
+            assert_eq!(
+                null_values.get::<Vec<Option<bool>>>(null_values.column_ordinal("bool_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<i16>>>(null_values.column_ordinal("int2_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<i32>>>(null_values.column_ordinal("int4_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<i64>>>(null_values.column_ordinal("int8_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<f32>>>(null_values.column_ordinal("float4_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<f64>>>(null_values.column_ordinal("float8_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<String>>>(null_values.column_ordinal("text_array_")?)?,
+                None
+            );
 
             // Test SetOf's null handling
             _ = client.update(
@@ -667,6 +848,59 @@ mod tests {
             let jsonb = null_values.get::<JsonB>(null_values.column_ordinal("jsonb_")?)?;
 
             assert!(jsonb.is_none());
+
+            assert_eq!(
+                setof_null_values.get::<Date>(setof_null_values.column_ordinal("date_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Time>(setof_null_values.column_ordinal("time_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Timestamp>(setof_null_values.column_ordinal("timestamp_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<TimestampWithTimeZone>(setof_null_values.column_ordinal("timestamptz_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Interval>(setof_null_values.column_ordinal("interval_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Uuid>(setof_null_values.column_ordinal("uuid_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<bool>>>(setof_null_values.column_ordinal("bool_array_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<i16>>>(setof_null_values.column_ordinal("int2_array_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<i32>>>(setof_null_values.column_ordinal("int4_array_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<i64>>>(setof_null_values.column_ordinal("int8_array_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<f32>>>(setof_null_values.column_ordinal("float4_array_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<f64>>>(setof_null_values.column_ordinal("float8_array_")?)?,
+                None
+            );
+            assert_eq!(
+                setof_null_values.get::<Vec<Option<String>>>(setof_null_values.column_ordinal("text_array_")?)?,
+                None
+            );
 
             // Test Scalar's null handling
             _ = client.update(
