@@ -55,6 +55,7 @@ pub enum AnyDatum {
 
 impl AnyDatum {
     /// Check if datum is an array type
+    #[allow(dead_code)]
     pub fn is_array(&self) -> bool {
         matches!(
             self,
@@ -173,49 +174,49 @@ impl FromDatum for AnyDatum {
     {
         let oid = PgOid::from(typoid);
         match oid {
-            PgOid::BuiltIn(PgBuiltInOids::BOOLOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::BOOLOID) => unsafe {
                 bool::from_datum(datum, is_null).map(AnyDatum::Bool)
             }
-            PgOid::BuiltIn(PgBuiltInOids::CHAROID) => {
+            PgOid::BuiltIn(PgBuiltInOids::CHAROID) => unsafe {
                 i8::from_datum(datum, is_null).map(AnyDatum::I8)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INT2OID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INT2OID) => unsafe {
                 i16::from_datum(datum, is_null).map(AnyDatum::I16)
             }
-            PgOid::BuiltIn(PgBuiltInOids::FLOAT4OID) => {
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT4OID) => unsafe {
                 f32::from_datum(datum, is_null).map(AnyDatum::F32)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INT4OID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INT4OID) => unsafe {
                 i32::from_datum(datum, is_null).map(AnyDatum::I32)
             }
-            PgOid::BuiltIn(PgBuiltInOids::FLOAT8OID) => {
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT8OID) => unsafe {
                 f64::from_datum(datum, is_null).map(AnyDatum::F64)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INT8OID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INT8OID) => unsafe {
                 i64::from_datum(datum, is_null).map(AnyDatum::I64)
             }
-            PgOid::BuiltIn(PgBuiltInOids::NUMERICOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::NUMERICOID) => unsafe {
                 AnyNumeric::from_datum(datum, is_null).map(AnyDatum::Numeric)
             }
-            PgOid::BuiltIn(PgBuiltInOids::TEXTOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::TEXTOID) => unsafe {
                 String::from_datum(datum, is_null).map(AnyDatum::String)
             }
-            PgOid::BuiltIn(PgBuiltInOids::DATEOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::DATEOID) => unsafe {
                 Date::from_datum(datum, is_null).map(AnyDatum::Date)
             }
-            PgOid::BuiltIn(PgBuiltInOids::TIMEOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::TIMEOID) => unsafe {
                 Time::from_datum(datum, is_null).map(AnyDatum::Time)
             }
-            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => unsafe {
                 Timestamp::from_datum(datum, is_null).map(AnyDatum::Timestamp)
             }
-            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZOID) => unsafe {
                 TimestampWithTimeZone::from_datum(datum, is_null).map(AnyDatum::Timestamptz)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INTERVALOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INTERVALOID) => unsafe {
                 Interval::from_datum(datum, is_null).map(AnyDatum::Interval)
             }
-            PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => unsafe {
                 JsonB::from_datum(datum, is_null).map(AnyDatum::Json)
             }
             PgOid::BuiltIn(PgBuiltInOids::BYTEAOID) => {
@@ -225,31 +226,31 @@ impl FromDatum for AnyDatum {
                     Some(AnyDatum::Bytea(datum.cast_mut_ptr::<pg_sys::bytea>()))
                 }
             }
-            PgOid::BuiltIn(PgBuiltInOids::UUIDOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::UUIDOID) => unsafe {
                 Uuid::from_datum(datum, is_null).map(AnyDatum::Uuid)
             }
-            PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => unsafe {
                 Vec::<Option<bool>>::from_datum(datum, false).map(AnyDatum::BoolArray)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INT2ARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INT2ARRAYOID) => unsafe {
                 Vec::<Option<i16>>::from_datum(datum, false).map(AnyDatum::I16Array)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INT4ARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INT4ARRAYOID) => unsafe {
                 Vec::<Option<i32>>::from_datum(datum, false).map(AnyDatum::I32Array)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INT8ARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::INT8ARRAYOID) => unsafe {
                 Vec::<Option<i64>>::from_datum(datum, false).map(AnyDatum::I64Array)
             }
-            PgOid::BuiltIn(PgBuiltInOids::FLOAT4ARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT4ARRAYOID) => unsafe {
                 Vec::<Option<f32>>::from_datum(datum, false).map(AnyDatum::F32Array)
             }
-            PgOid::BuiltIn(PgBuiltInOids::FLOAT8ARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT8ARRAYOID) => unsafe {
                 Vec::<Option<f64>>::from_datum(datum, false).map(AnyDatum::F64Array)
             }
-            PgOid::BuiltIn(PgBuiltInOids::TEXTARRAYOID) => {
+            PgOid::BuiltIn(PgBuiltInOids::TEXTARRAYOID) => unsafe {
                 Vec::<Option<String>>::from_datum(datum, false).map(AnyDatum::StringArray)
             }
-            PgOid::BuiltIn(PgBuiltInOids::VARCHAROID) => {
+            PgOid::BuiltIn(PgBuiltInOids::VARCHAROID) => unsafe {
                 String::from_datum(datum, is_null).map(AnyDatum::String)
             }
             PgOid::Custom(_) => {
