@@ -530,7 +530,7 @@ mod tests {
             assert_eq!(jsonb_struct.key, "value".to_string());
 
             // Test new types
-            use pgrx::datum::{Date, Time, Timestamp, TimestampWithTimeZone, Interval, Uuid};
+            use pgrx::datum::{Date, Interval, Time, Timestamp, TimestampWithTimeZone, Uuid};
 
             // Date
             let date = supported_types.get::<Date>(supported_types.column_ordinal("date_")?)?;
@@ -545,7 +545,8 @@ mod tests {
             assert!(timestamp.is_some());
 
             // Timestamptz
-            let timestamptz = supported_types.get::<TimestampWithTimeZone>(supported_types.column_ordinal("timestamptz_")?)?;
+            let timestamptz =
+                supported_types.get::<TimestampWithTimeZone>(supported_types.column_ordinal("timestamptz_")?)?;
             assert!(timestamptz.is_some());
 
             // Interval
@@ -561,7 +562,8 @@ mod tests {
             assert!(uuid.is_some());
 
             // Arrays
-            let bool_array = supported_types.get::<Vec<Option<bool>>>(supported_types.column_ordinal("bool_array_")?)?;
+            let bool_array =
+                supported_types.get::<Vec<Option<bool>>>(supported_types.column_ordinal("bool_array_")?)?;
             assert_eq!(bool_array, Some(vec![Some(true), Some(false), Some(true)]));
 
             let int2_array = supported_types.get::<Vec<Option<i16>>>(supported_types.column_ordinal("int2_array_")?)?;
@@ -573,17 +575,20 @@ mod tests {
             let int8_array = supported_types.get::<Vec<Option<i64>>>(supported_types.column_ordinal("int8_array_")?)?;
             assert_eq!(int8_array, Some(vec![Some(100), Some(200), Some(300)]));
 
-            let float4_array = supported_types.get::<Vec<Option<f32>>>(supported_types.column_ordinal("float4_array_")?)?;
+            let float4_array =
+                supported_types.get::<Vec<Option<f32>>>(supported_types.column_ordinal("float4_array_")?)?;
             assert!(float4_array.is_some());
             let float4_vec = float4_array.unwrap();
             assert_eq!(float4_vec.len(), 3);
 
-            let float8_array = supported_types.get::<Vec<Option<f64>>>(supported_types.column_ordinal("float8_array_")?)?;
+            let float8_array =
+                supported_types.get::<Vec<Option<f64>>>(supported_types.column_ordinal("float8_array_")?)?;
             assert!(float8_array.is_some());
             let float8_vec = float8_array.unwrap();
             assert_eq!(float8_vec.len(), 3);
 
-            let text_array = supported_types.get::<Vec<Option<String>>>(supported_types.column_ordinal("text_array_")?)?;
+            let text_array =
+                supported_types.get::<Vec<Option<String>>>(supported_types.column_ordinal("text_array_")?)?;
             assert_eq!(
                 text_array,
                 Some(vec![
@@ -727,22 +732,52 @@ mod tests {
             assert!(jsonb.is_none());
 
             // Test new types for null
-            use pgrx::datum::{Date, Time, Timestamp, TimestampWithTimeZone, Interval, Uuid};
+            use pgrx::datum::{Date, Interval, Time, Timestamp, TimestampWithTimeZone, Uuid};
 
             assert_eq!(null_values.get::<Date>(null_values.column_ordinal("date_")?)?, None);
             assert_eq!(null_values.get::<Time>(null_values.column_ordinal("time_")?)?, None);
-            assert_eq!(null_values.get::<Timestamp>(null_values.column_ordinal("timestamp_")?)?, None);
-            assert_eq!(null_values.get::<TimestampWithTimeZone>(null_values.column_ordinal("timestamptz_")?)?, None);
-            assert_eq!(null_values.get::<Interval>(null_values.column_ordinal("interval_")?)?, None);
+            assert_eq!(
+                null_values.get::<Timestamp>(null_values.column_ordinal("timestamp_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<TimestampWithTimeZone>(null_values.column_ordinal("timestamptz_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Interval>(null_values.column_ordinal("interval_")?)?,
+                None
+            );
             assert_eq!(null_values.get::<Vec<u8>>(null_values.column_ordinal("bytea_")?)?, None);
             assert_eq!(null_values.get::<Uuid>(null_values.column_ordinal("uuid_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<bool>>>(null_values.column_ordinal("bool_array_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<i16>>>(null_values.column_ordinal("int2_array_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<i32>>>(null_values.column_ordinal("int4_array_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<i64>>>(null_values.column_ordinal("int8_array_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<f32>>>(null_values.column_ordinal("float4_array_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<f64>>>(null_values.column_ordinal("float8_array_")?)?, None);
-            assert_eq!(null_values.get::<Vec<Option<String>>>(null_values.column_ordinal("text_array_")?)?, None);
+            assert_eq!(
+                null_values.get::<Vec<Option<bool>>>(null_values.column_ordinal("bool_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<i16>>>(null_values.column_ordinal("int2_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<i32>>>(null_values.column_ordinal("int4_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<i64>>>(null_values.column_ordinal("int8_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<f32>>>(null_values.column_ordinal("float4_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<f64>>>(null_values.column_ordinal("float8_array_")?)?,
+                None
+            );
+            assert_eq!(
+                null_values.get::<Vec<Option<String>>>(null_values.column_ordinal("text_array_")?)?,
+                None
+            );
 
             // Test SetOf's null handling
             _ = client.update(
