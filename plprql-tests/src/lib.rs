@@ -529,39 +529,30 @@ mod tests {
 
             assert_eq!(jsonb_struct.key, "value".to_string());
 
-            // Test new types
             use pgrx::datum::{Date, Interval, Time, Timestamp, TimestampWithTimeZone, Uuid};
 
-            // Date
             let date = supported_types.get::<Date>(supported_types.column_ordinal("date_")?)?;
             assert!(date.is_some());
 
-            // Time
             let time = supported_types.get::<Time>(supported_types.column_ordinal("time_")?)?;
             assert!(time.is_some());
 
-            // Timestamp
             let timestamp = supported_types.get::<Timestamp>(supported_types.column_ordinal("timestamp_")?)?;
             assert!(timestamp.is_some());
 
-            // Timestamptz
             let timestamptz =
                 supported_types.get::<TimestampWithTimeZone>(supported_types.column_ordinal("timestamptz_")?)?;
             assert!(timestamptz.is_some());
 
-            // Interval
             let interval = supported_types.get::<Interval>(supported_types.column_ordinal("interval_")?)?;
             assert!(interval.is_some());
 
-            // Bytea
             let bytea = supported_types.get::<Vec<u8>>(supported_types.column_ordinal("bytea_")?)?;
             assert_eq!(bytea, Some(vec![0xDE, 0xAD, 0xBE, 0xEF]));
 
-            // UUID
             let uuid = supported_types.get::<Uuid>(supported_types.column_ordinal("uuid_")?)?;
             assert!(uuid.is_some());
 
-            // Arrays
             let bool_array =
                 supported_types.get::<Vec<Option<bool>>>(supported_types.column_ordinal("bool_array_")?)?;
             assert_eq!(bool_array, Some(vec![Some(true), Some(false), Some(true)]));
@@ -647,7 +638,7 @@ mod tests {
                         "serial_"
                     )
                     values (
-                        DEFAULT -- serial_ (auto-incremented)
+                        DEFAULT
                     );
 
                     create function get_null_values(int) returns table(
@@ -731,7 +722,6 @@ mod tests {
 
             assert!(jsonb.is_none());
 
-            // Test new types for null
             use pgrx::datum::{Date, Interval, Time, Timestamp, TimestampWithTimeZone, Uuid};
 
             assert_eq!(null_values.get::<Date>(null_values.column_ordinal("date_")?)?, None);
@@ -869,7 +859,6 @@ mod tests {
 
             assert!(jsonb.is_none());
 
-            // Test new types for null in SetOf
             assert_eq!(
                 setof_null_values.get::<Date>(setof_null_values.column_ordinal("date_")?)?,
                 None
