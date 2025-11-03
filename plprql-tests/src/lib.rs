@@ -638,7 +638,7 @@ mod tests {
                         "serial_"
                     )
                     values (
-                        DEFAULT
+                        DEFAULT -- serial_ (auto-incremented)
                     );
 
                     create function get_null_values(int) returns table(
