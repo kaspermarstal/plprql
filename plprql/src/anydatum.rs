@@ -42,7 +42,6 @@ pub enum AnyDatum {
     Timestamptz(TimestampWithTimeZone),
     Interval(Interval),
     Json(JsonB),
-    Bytea(*mut pg_sys::bytea),
     Uuid(Uuid),
     BoolArray(Vec<Option<bool>>),
     I16Array(Vec<Option<i16>>),
@@ -90,7 +89,6 @@ impl Clone for AnyDatum {
             AnyDatum::Timestamptz(v) => AnyDatum::Timestamptz(*v),
             AnyDatum::Interval(v) => AnyDatum::Interval(*v),
             AnyDatum::Json(v) => AnyDatum::Json(JsonB(v.0.clone())),
-            AnyDatum::Bytea(v) => AnyDatum::Bytea(*v),
             AnyDatum::Uuid(v) => AnyDatum::Uuid(*v),
             AnyDatum::BoolArray(v) => AnyDatum::BoolArray(v.clone()),
             AnyDatum::I16Array(v) => AnyDatum::I16Array(v.clone()),
@@ -121,7 +119,6 @@ impl IntoDatum for AnyDatum {
             AnyDatum::Timestamptz(v) => v.into_datum(),
             AnyDatum::Interval(v) => v.into_datum(),
             AnyDatum::Json(v) => v.into_datum(),
-            AnyDatum::Bytea(v) => Some(pg_sys::Datum::from(v)),
             AnyDatum::Uuid(v) => v.into_datum(),
             AnyDatum::BoolArray(v) => v.into_datum(),
             AnyDatum::I16Array(v) => v.into_datum(),
@@ -154,7 +151,6 @@ impl IntoDatum for AnyDatum {
             || other == pg_sys::TIMESTAMPTZOID
             || other == pg_sys::INTERVALOID
             || other == pg_sys::JSONBOID
-            || other == pg_sys::BYTEAOID
             || other == pg_sys::UUIDOID
             || other == pg_sys::BOOLARRAYOID
             || other == pg_sys::INT2ARRAYOID
@@ -199,13 +195,6 @@ impl FromDatum for AnyDatum {
                 Interval::from_datum(datum, is_null).map(AnyDatum::Interval)
             },
             PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => unsafe { JsonB::from_datum(datum, is_null).map(AnyDatum::Json) },
-            PgOid::BuiltIn(PgBuiltInOids::BYTEAOID) => {
-                if is_null {
-                    None
-                } else {
-                    Some(AnyDatum::Bytea(datum.cast_mut_ptr::<pg_sys::bytea>()))
-                }
-            }
             PgOid::BuiltIn(PgBuiltInOids::UUIDOID) => unsafe { Uuid::from_datum(datum, is_null).map(AnyDatum::Uuid) },
             PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => unsafe {
                 Vec::<Option<bool>>::from_datum(datum, false).map(AnyDatum::BoolArray)
@@ -231,13 +220,6 @@ impl FromDatum for AnyDatum {
             PgOid::BuiltIn(PgBuiltInOids::VARCHAROID) => unsafe {
                 String::from_datum(datum, is_null).map(AnyDatum::String)
             },
-            PgOid::Custom(_) => {
-                if is_null {
-                    None
-                } else {
-                    Some(AnyDatum::Bytea(datum.cast_mut_ptr::<pg_sys::bytea>()))
-                }
-            }
             _ => None,
         }
     }
@@ -297,19 +279,6 @@ impl fmt::Display for AnyDatum {
             },
             AnyDatum::Interval(v) => write!(f, "{v}"),
             AnyDatum::Json(v) => write!(f, "{v:?}"),
-            AnyDatum::Bytea(v) => {
-                let byte_u8 = unsafe { pgrx::varlena::varlena_to_byte_slice(*v) };
-                let hex = byte_u8
-                    .iter()
-                    .map(|b| format!("{b:02X}"))
-                    .collect::<Vec<String>>()
-                    .join("");
-                if hex.is_empty() {
-                    write!(f, "''")
-                } else {
-                    write!(f, r#"'\x{hex}'"#,)
-                }
-            }
             AnyDatum::Uuid(v) => write!(f, "'{v}'",),
             AnyDatum::BoolArray(v) => write_array(v, f),
             AnyDatum::I16Array(v) => write_array(v, f),

@@ -304,7 +304,6 @@ mod tests {
                         "timestamp_" timestamp,
                         "timestamptz_" timestamptz,
                         "interval_" interval,
-                        "bytea_" bytea,
                         "uuid_" uuid,
                         "bool_array_" bool[],
                         "int2_array_" int2[],
@@ -340,7 +339,6 @@ mod tests {
                         "timestamp_",
                         "timestamptz_",
                         "interval_",
-                        "bytea_",
                         "uuid_",
                         "bool_array_",
                         "int2_array_",
@@ -374,7 +372,6 @@ mod tests {
                         '2024-01-15 14:30:00', -- timestamp_
                         '2024-01-15 14:30:00+00', -- timestamptz_
                         '1 day 2 hours', -- interval_
-                        '\xDEADBEEF', -- bytea_
                         '550e8400-e29b-41d4-a716-446655440000', -- uuid_
                         ARRAY[true, false, true], -- bool_array_
                         ARRAY[1, 2, 3], -- int2_array_
@@ -409,7 +406,6 @@ mod tests {
                         "timestamp_" timestamp,
                         "timestamptz_" timestamptz,
                         "interval_" interval,
-                        "bytea_" bytea,
                         "uuid_" uuid,
                         "bool_array_" bool[],
                         "int2_array_" int2[],
@@ -547,9 +543,6 @@ mod tests {
             let interval = supported_types.get::<Interval>(supported_types.column_ordinal("interval_")?)?;
             assert!(interval.is_some());
 
-            let bytea = supported_types.get::<Vec<u8>>(supported_types.column_ordinal("bytea_")?)?;
-            assert_eq!(bytea, Some(vec![0xDE, 0xAD, 0xBE, 0xEF]));
-
             let uuid = supported_types.get::<Uuid>(supported_types.column_ordinal("uuid_")?)?;
             assert!(uuid.is_some());
 
@@ -622,7 +615,6 @@ mod tests {
                         "timestamp_" timestamp,
                         "timestamptz_" timestamptz,
                         "interval_" interval,
-                        "bytea_" bytea,
                         "uuid_" uuid,
                         "bool_array_" bool[],
                         "int2_array_" int2[],
@@ -663,7 +655,6 @@ mod tests {
                         "timestamp_" timestamp,
                         "timestamptz_" timestamptz,
                         "interval_" interval,
-                        "bytea_" bytea,
                         "uuid_" uuid,
                         "bool_array_" bool[],
                         "int2_array_" int2[],
@@ -738,7 +729,6 @@ mod tests {
                 null_values.get::<Interval>(null_values.column_ordinal("interval_")?)?,
                 None
             );
-            assert_eq!(null_values.get::<Vec<u8>>(null_values.column_ordinal("bytea_")?)?, None);
             assert_eq!(null_values.get::<Uuid>(null_values.column_ordinal("uuid_")?)?, None);
             assert_eq!(
                 null_values.get::<Vec<Option<bool>>>(null_values.column_ordinal("bool_array_")?)?,
@@ -877,10 +867,6 @@ mod tests {
             );
             assert_eq!(
                 setof_null_values.get::<Interval>(setof_null_values.column_ordinal("interval_")?)?,
-                None
-            );
-            assert_eq!(
-                setof_null_values.get::<Vec<u8>>(setof_null_values.column_ordinal("bytea_")?)?,
                 None
             );
             assert_eq!(
