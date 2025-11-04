@@ -1773,9 +1773,9 @@ dependencies = [
 
 [[package]]
 name = "prqlc"
-version = "0.13.5"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcacbd060eaccb279056cdb7086a5f0b0e479ebd1c39ca19991657eeaba5384f"
+checksum = "313316631b584b03a6df9c1e5253959029e9d5d4b4be1517a67f8af03bf6715a"
 dependencies = [
  "anstream",
  "anyhow",
@@ -1811,9 +1811,9 @@ dependencies = [
 
 [[package]]
 name = "prqlc-parser"
-version = "0.13.5"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcfdc09e28ef786d02abf075f8650e7e54bac6d38c2349524a2a54ee4a47fa7"
+checksum = "c76611a37e3e38195084a374b7f20b32fee371f418f5bc7e4cde6a0b775baccd"
 dependencies = [
  "chumsky",
  "enum-as-inner",
