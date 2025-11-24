@@ -22,7 +22,7 @@ jobs:
         pg: [ "13", "14", "15", "16", "17", "18" ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install icu
         if: runner.os == 'macOS' && (matrix.pg == '16' || matrix.pg == '17' || matrix.pg == '18')
         run: |
@@ -44,7 +44,7 @@ jobs:
   Install:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
@@ -85,14 +85,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Run rustfmt
         run: cargo fmt -- --check
   rust-clippy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install readline
         run: sudo apt-get install libreadline-dev
       - name: Install cargo-pgrx
