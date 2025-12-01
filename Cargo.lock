@@ -1773,9 +1773,9 @@ dependencies = [
 
 [[package]]
 name = "prqlc"
-version = "0.13.6"
+version = "0.13.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "313316631b584b03a6df9c1e5253959029e9d5d4b4be1517a67f8af03bf6715a"
+checksum = "2130a59dd0cfd5ded87421e1bc68a80ac93ff5efc4888f9cf38a216d59ecf88b"
 dependencies = [
  "anstream",
  "anyhow",
@@ -1811,9 +1811,9 @@ dependencies = [
 
 [[package]]
 name = "prqlc-parser"
-version = "0.13.6"
+version = "0.13.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c76611a37e3e38195084a374b7f20b32fee371f418f5bc7e4cde6a0b775baccd"
+checksum = "d94dabf287da578eb01d4cd0b934747c66304d4a2a728b2d3800f71c686dcecd"
 dependencies = [
  "chumsky",
  "enum-as-inner",
@@ -2037,9 +2037,9 @@ dependencies = [
 
 [[package]]
 name = "schemars"
-version = "1.0.4"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82d20c4491bc164fa2f6c5d44565947a52ad80b9505d8e36f8d54c27c739fcd0"
+checksum = "9558e172d4e8533736ba97870c4b2cd63f84b382a3d6eb063da41b91cce17289"
 dependencies = [
  "dyn-clone",
  "ref-cast",
@@ -2050,9 +2050,9 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "1.0.4"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33d020396d1d138dc19f1165df7545479dcd58d93810dc5d646a16e55abefa80"
+checksum = "301858a4023d78debd2353c7426dc486001bddc91ae31a76fb1f55132f7e2633"
 dependencies = [
  "proc-macro2",
  "quote",
