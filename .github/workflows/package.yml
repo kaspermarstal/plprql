@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Ensure all history for tags and branches is fetched
       - name: Extract PL/PRQL version
@@ -92,7 +92,7 @@ jobs:
   Bash:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
