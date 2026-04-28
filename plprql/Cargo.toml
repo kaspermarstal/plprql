@@ -30,7 +30,7 @@ pg_test = []
 
 [dependencies]
 pgrx = { workspace = true }
-prqlc = { version = "0.13.10", features = ["postgres"] }
+prqlc = { version = "0.13.12", features = ["postgres"] }
 thiserror = "2.0.18"
 
 [dev-dependencies]
