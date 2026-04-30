@@ -19,4 +19,4 @@ strip = "debuginfo"
 
 [workspace.dependencies]
 pgrx = "0.16.1"
-pgrx-tests = "0.16.1"
+pgrx-tests = "0.18.0"

@@ -175,19 +175,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "bit-set"
-version = "0.8.0"
+name = "bindgen"
+version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08807e080ed7f9d5433fa9b275196cfc35414f66a0c79d864dc51a0d825231a3"
+checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
 dependencies = [
- "bit-vec",
+ "annotate-snippets",
+ "bitflags 2.10.0",
+ "cexpr",
+ "clang-sys",
+ "itertools 0.13.0",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "syn",
 ]
-
-[[package]]
-name = "bit-vec"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
@@ -1448,12 +1452,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
-
-[[package]]
 name = "pathsearch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1491,9 +1489,30 @@ dependencies = [
  "bitvec",
  "enum-map",
  "libc",
- "pgrx-macros",
- "pgrx-pg-sys",
- "pgrx-sql-entity-graph",
+ "pgrx-macros 0.16.1",
+ "pgrx-pg-sys 0.16.1",
+ "pgrx-sql-entity-graph 0.16.1",
+ "seahash",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
+name = "pgrx"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56737d5e26e6b5021c32270543f1cc40a5a4b7e5195a619b43545a43e77383f0"
+dependencies = [
+ "bitflags 2.10.0",
+ "bitvec",
+ "enum-map",
+ "libc",
+ "pgrx-macros 0.18.0",
+ "pgrx-pg-sys 0.18.0",
+ "pgrx-sql-entity-graph 0.18.0",
  "seahash",
  "serde",
  "serde_cbor",
@@ -1508,11 +1527,30 @@ version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00e35193b7e71e2f612d336cecd00db0f049f4cc609f2b1c9a34755b5ec559d7"
 dependencies = [
- "bindgen",
+ "bindgen 0.71.1",
  "cc",
  "clang-sys",
  "eyre",
- "pgrx-pg-config",
+ "pgrx-pg-config 0.16.1",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "shlex",
+ "syn",
+ "walkdir",
+]
+
+[[package]]
+name = "pgrx-bindgen"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61aa5a299ea64ef04a2b4ee4022f2f4631112a603133abdedcde7c7b81373761"
+dependencies = [
+ "bindgen 0.72.1",
+ "cc",
+ "clang-sys",
+ "eyre",
+ "pgrx-pg-config 0.18.0",
  "proc-macro2",
  "quote",
  "regex",
@@ -1527,7 +1565,19 @@ version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dab542dd4041773874f90cd8e3448195749548dc3fb1daf501e7e11ebfb1dd22"
 dependencies = [
- "pgrx-sql-entity-graph",
+ "pgrx-sql-entity-graph 0.16.1",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "pgrx-macros"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcdc8db853dd1b13e632488b87af8aeaf0007c87504f459fbc36530341c836d4"
+dependencies = [
+ "pgrx-sql-entity-graph 0.18.0",
  "proc-macro2",
  "quote",
  "syn",
@@ -1554,6 +1604,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pgrx-pg-config"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "398ee37175cd1320b57de3cb7ff3617d0e9ebab99409e842431ff43e9c4f021a"
+dependencies = [
+ "cargo_toml",
+ "codepage",
+ "encoding_rs",
+ "eyre",
+ "owo-colors",
+ "pathsearch",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
+ "url",
+ "winapi",
+]
+
+[[package]]
 name = "pgrx-pg-sys"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1561,9 +1631,23 @@ checksum = "934f2536953ccb6722bef2cfdfb1f8d6d3cd4a4f2c508d56ec85b649c5680c2b"
 dependencies = [
  "cee-scape",
  "libc",
- "pgrx-bindgen",
- "pgrx-macros",
- "pgrx-sql-entity-graph",
+ "pgrx-bindgen 0.16.1",
+ "pgrx-macros 0.16.1",
+ "pgrx-sql-entity-graph 0.16.1",
+ "serde",
+]
+
+[[package]]
+name = "pgrx-pg-sys"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb29319be9ab6cba07134c6169f2935e52620cd339f4019cfcf968576ba12cf1"
+dependencies = [
+ "cee-scape",
+ "libc",
+ "pgrx-bindgen 0.18.0",
+ "pgrx-macros 0.18.0",
+ "pgrx-sql-entity-graph 0.18.0",
  "serde",
 ]
 
@@ -1584,25 +1668,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "pgrx-tests"
-version = "0.16.1"
+name = "pgrx-sql-entity-graph"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0d5d5f614a32310af2cc1b9587c69e041d97e8ab812d8d31fdcd3d33d27325c"
+checksum = "22ac641175b0a104d16dce47dd828060479c9fde517a840d75d6b5ccce2ae7b9"
+dependencies = [
+ "convert_case",
+ "eyre",
+ "petgraph",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "thiserror 2.0.18",
+ "unescape",
+]
+
+[[package]]
+name = "pgrx-tests"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b064dffd008c9bebed62e00d82c9c9cef49ba40071bfa38d31359f4a6c1a907d"
 dependencies = [
  "clap-cargo",
  "eyre",
  "libc",
  "owo-colors",
- "paste",
- "pgrx",
- "pgrx-macros",
- "pgrx-pg-config",
+ "pgrx 0.18.0",
+ "pgrx-macros 0.18.0",
+ "pgrx-pg-config 0.18.0",
  "postgres",
- "proptest",
  "rand",
  "regex",
- "serde",
- "serde_json",
  "shlex",
  "sysinfo",
  "tempfile",
@@ -1645,7 +1741,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 name = "plprql"
 version = "18.0.0"
 dependencies = [
- "pgrx",
+ "pgrx 0.16.1",
  "pgrx-tests",
  "prqlc",
  "thiserror 2.0.18",
@@ -1655,7 +1751,7 @@ dependencies = [
 name = "plprql_tests"
 version = "18.0.0"
 dependencies = [
- "pgrx",
+ "pgrx 0.16.1",
  "pgrx-tests",
  "serde",
  "serde_json",
@@ -1738,25 +1834,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proptest"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bee689443a2bd0a16ab0348b52ee43e3b2d1b1f931c8aa5c9f8de4c86fbe8c40"
-dependencies = [
- "bit-set",
- "bit-vec",
- "bitflags 2.10.0",
- "num-traits",
- "rand",
- "rand_chacha",
- "rand_xorshift",
- "regex-syntax 0.8.8",
- "rusty-fork",
- "tempfile",
- "unarray",
-]
-
-[[package]]
 name = "prqlc"
 version = "0.13.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1812,12 +1889,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quick-error"
-version = "1.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
-
-[[package]]
 name = "quote"
 version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1865,15 +1936,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
 dependencies = [
  "getrandom",
-]
-
-[[package]]
-name = "rand_xorshift"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "513962919efc330f829edb2535844d1b912b0fbe2ca165d613e4e8788bb05a5a"
-dependencies = [
- "rand_core",
 ]
 
 [[package]]
@@ -1981,18 +2043,6 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
-
-[[package]]
-name = "rusty-fork"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc6bf79ff24e648f6da1f8d1f011e9cac26491b619e6b9280f2b47f1774e6ee2"
-dependencies = [
- "fnv",
- "quick-error",
- "tempfile",
- "wait-timeout",
-]
 
 [[package]]
 name = "ryu"
@@ -2580,12 +2630,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
-name = "unarray"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaea85b334db583fe3274d12b4cd1880032beab409c0d774be044d4480ab9a94"
-
-[[package]]
 name = "unescape"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2732,15 +2776,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "wait-timeout"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09ac3b126d3914f9849036f826e054cbabdc8519970b8998ddaf3b5bd3c65f11"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "walkdir"
