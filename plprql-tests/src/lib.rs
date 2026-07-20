@@ -275,6 +275,68 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_numeric_to_float_return_coercion() -> Result<(), pgrx::spi::Error> {
+        Spi::connect_mut(|client| {
+            _ = client.update(
+                r#"
+                    create table numeric_return_values(label text primary key, value numeric);
+                    insert into numeric_return_values values ('first', 1.25), ('second', 2.5);
+
+                    create function numeric_table_float8()
+                    returns table(label text, value float8) as $$
+                        from numeric_return_values
+                        sort label
+                        select {label, value}
+                    $$ language plprql;
+
+                    create function numeric_table_float4()
+                    returns table(label text, value float4) as $$
+                        from numeric_return_values
+                        sort label
+                        select {label, value}
+                    $$ language plprql;
+
+                    create function numeric_scalar_float8() returns float8 as $$
+                        from numeric_return_values
+                        sort label
+                        select {value}
+                        take 1
+                    $$ language plprql;
+
+                    create function numeric_setof_float8() returns setof float8 as $$
+                        from numeric_return_values
+                        sort label
+                        select {value}
+                    $$ language plprql;
+                    "#,
+                None,
+                &[],
+            )?;
+
+            let table_float8 = client
+                .select("select value from numeric_table_float8()", None, &[])?
+                .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<f64>().unwrap().unwrap())
+                .collect::<Vec<_>>();
+            let table_float4 = client
+                .select("select value from numeric_table_float4()", None, &[])?
+                .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<f32>().unwrap().unwrap())
+                .collect::<Vec<_>>();
+            let scalar_float8 = Spi::get_one::<f64>("select numeric_scalar_float8()")?;
+            let setof_float8 = client
+                .select("select numeric_setof_float8()", None, &[])?
+                .map(|row| row.get_datum_by_ordinal(1).unwrap().value::<f64>().unwrap().unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(table_float8, vec![1.25f64, 2.5f64]);
+            assert_eq!(table_float4, vec![1.25f32, 2.5f32]);
+            assert_eq!(scalar_float8, Some(1.25f64));
+            assert_eq!(setof_float8, vec![1.25f64, 2.5f64]);
+
+            Ok(())
+        })
+    }
+
+    #[pg_test]
     fn test_supported_types() -> Result<(), pgrx::spi::Error> {
         Spi::connect_mut(|client| {
             _ = client.update(
