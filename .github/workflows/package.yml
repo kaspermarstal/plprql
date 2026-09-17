@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Ensure all history for tags and branches is fetched
       - name: Extract PL/PRQL version
@@ -86,13 +86,13 @@ jobs:
           docker rm -v $CONTAINER_ID
       - name: Upload .deb
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: /home/runner/artifacts/plprql*.deb
   Bash:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install PostgreSQL headers
         run: |
           sudo apt-get update
