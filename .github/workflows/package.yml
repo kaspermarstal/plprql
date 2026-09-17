@@ -70,7 +70,8 @@ jobs:
           max_tries=30
           count=0
           
-          until docker exec $CONTAINER_ID pg_isready -U postgres; do
+          # The initialization server listens only on a Unix socket; wait for the final TCP server.
+          until docker exec $CONTAINER_ID pg_isready -h 127.0.0.1 -U postgres; do
             count=$((count+1))
             echo "Waiting for PostgreSQL to start (attempt $count of $max_tries)"
             sleep 1
@@ -80,8 +81,8 @@ jobs:
             fi
           done
           
-          docker exec $CONTAINER_ID psql -U postgres -c "create extension plprql;"
-          docker exec $CONTAINER_ID psql -U postgres -c "select prql_to_sql('from table');"
+          docker exec $CONTAINER_ID psql -h 127.0.0.1 -U postgres -v ON_ERROR_STOP=1 -c "create extension plprql;"
+          docker exec $CONTAINER_ID psql -h 127.0.0.1 -U postgres -v ON_ERROR_STOP=1 -c "select prql_to_sql('from table');"
           docker stop $CONTAINER_ID
           docker rm -v $CONTAINER_ID
       - name: Upload .deb
