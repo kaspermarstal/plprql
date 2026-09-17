@@ -1,0 +1,2 @@
+-- Both v18.0.0 and v18.0.1 packages used extension version 18.0.0.
+-- SQL objects are unchanged; fixes are provided by the updated shared library.

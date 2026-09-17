@@ -1,7 +1,8 @@
 [package]
 name = "plprql"
-version = "18.0.0"
+version = "18.0.2"
 edition = "2024"
+rust-version = "1.96"
 description = "A procedural language PostgreSQL extension for PRQL"
 authors = ["Kasper Marstal <kaspermarstal@gmail.com>"]
 homepage = "https://github.com/kaspermarstal/plprql"

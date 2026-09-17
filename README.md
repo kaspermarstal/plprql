@@ -108,7 +108,7 @@ Follow these steps to install PL/PRQL from one of the released deb files:
 2. Open a terminal and change to the directory where the `.deb` file was downloaded. Install the package with dpkg, e.g.:
 
    ```cmd
-   sudo dpkg -i plprql-18.0.0-postgresql-18-debian-bookworm-amd64.deb
+   sudo dpkg -i plprql-18.0.2-postgresql-18-debian-bookworm-amd64.deb
    ```
 3. If dpkg reports missing dependencies, run the following command to fix them:
    
@@ -261,6 +261,12 @@ The first number indicates the latest PostgreSQL major version supported by this
 - `18.0.1` - Bug fix or minor improvement in PL/PRQL (for PostgreSQL 18)
 
 To check your installed plprql version, run `SELECT extversion FROM pg_extension WHERE extname = 'plprql';`.
+
+After installing the v18.0.2 package, reconnect to PostgreSQL so the new shared library is loaded, then run this in each database using PL/PRQL:
+
+```sql
+ALTER EXTENSION plprql UPDATE TO '18.0.2';
+```
 
 ## License
 Apache 2.0 License
