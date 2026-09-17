@@ -268,7 +268,5 @@ After installing the v18.0.2 package, reconnect to PostgreSQL so the new shared 
 ALTER EXTENSION plprql UPDATE TO '18.0.2';
 ```
 
-Both v18.0.0 and v18.0.1 packages reported extension version `18.0.0`; v18.0.2 includes an upgrade path from that version. Existing PL/PRQL functions are preserved.
-
 ## License
 Apache 2.0 License
