@@ -19,12 +19,12 @@ jobs:
       fail-fast: false # We want all of them to run, even if one fails
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-        pg: [ "13", "14", "15", "16", "17", "18" ]
+        pg: [ "13", "14", "15", "16", "17", "18", "19" ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - name: Install icu
-        if: runner.os == 'macOS' && (matrix.pg == '16' || matrix.pg == '17' || matrix.pg == '18')
+        if: runner.os == 'macOS' && (matrix.pg == '16' || matrix.pg == '17' || matrix.pg == '18' || matrix.pg == '19')
         run: |
           brew install icu4c
           echo "PKG_CONFIG_PATH=$(brew --prefix icu4c)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
