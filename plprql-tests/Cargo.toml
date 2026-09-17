@@ -6,10 +6,6 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib", "lib"]
 
-[[bin]]
-name = "pgrx_embed_plprql_tests"
-path = "src/bin/pgrx_embed.rs"
-
 [features]
 default = ["pg18"]
 pg13 = ["pgrx/pg13", "pgrx-tests/pg13"]

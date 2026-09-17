@@ -14,10 +14,6 @@ license = "Apache-2.0"
 [lib]
 crate-type = ["cdylib", "lib"]
 
-[[bin]]
-name = "pgrx_embed_plprql"
-path = "src/bin/pgrx_embed.rs"
-
 [features]
 default = ["pg18"]
 pg13 = ["pgrx/pg13", "pgrx-tests/pg13"]

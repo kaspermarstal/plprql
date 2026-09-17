@@ -18,5 +18,5 @@ codegen-units = 1
 strip = "debuginfo"
 
 [workspace.dependencies]
-pgrx = "0.16.1"
-pgrx-tests = "0.16.1"
+pgrx = "=0.19.2"
+pgrx-tests = "=0.19.2"

@@ -129,10 +129,10 @@ PL/PRQL is built on top of the [pgrx](https://github.com/pgcentralfoundation/pgr
 2. Install `cargo-pgrx`.
 
     ```cmd
-    cargo install --locked --version=0.16.1 cargo-pgrx
+    cargo install --locked --version=0.19.2 cargo-pgrx
     ```
 
-    The version of `cargo-pgrx` must match the version of `pgrx` in `plprql/Cargo.toml`. 
+    The version of `cargo-pgrx` must match the version of `pgrx` in the root `Cargo.toml`.
 
 3. Initialize `pgrx` for your system.
    ```cmd
@@ -224,7 +224,7 @@ sudo apt-get update
 sudo apt-get install -y postgresql-18 postgresql-server-dev-18
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source ~/.bashrc
-cargo install --locked --version=0.16.1 cargo-pgrx
+cargo install --locked --version=0.19.2 cargo-pgrx
 cargo pgrx init --pg18 $(which pg_config)
 ```
 
